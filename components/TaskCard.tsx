@@ -164,26 +164,10 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onOpenDetails }) => 
           </div>
         </div>
 
-        {/* Cột phải: Links sản phẩm, Sửa đề & Trạng thái duyệt */}
-        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap justify-between xl:justify-end flex-shrink-0 pt-2 sm:pt-0 border-t border-slate-100 dark:border-slate-800 xl:border-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            {/* Nút Chỉnh sửa nhập liệu cho QC & Admin */}
-            {(effectiveRole === "QC" || effectiveRole === "ADMIN") && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenDetails(task);
-                }}
-                aria-label={`Chỉnh sửa nhập liệu cho đề ${title}`}
-                className="rounded-xl font-extrabold text-[11px] sm:text-xs text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/80 bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100 hover:text-amber-800 flex items-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 transition shadow-2xs"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                <span>Sửa đề</span>
-              </Button>
-            )}
-
+        {/* Cột phải: Links sản phẩm (Desktop) & Trạng thái duyệt */}
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0 pt-2 sm:pt-0 border-t border-slate-100 dark:border-slate-800 xl:border-0 justify-between xl:justify-end">
+          {/* Trên Desktop (xl+): Hiển thị thêm Link SP & Minh chứng */}
+          <div className="hidden xl:flex items-center gap-1.5 sm:gap-2 flex-wrap">
             {linkSp && (
               <Button
                 variant="outline"
@@ -217,10 +201,10 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onOpenDetails }) => 
             )}
           </div>
 
-          {/* Badge trạng thái chuẩn */}
+          {/* Badge trạng thái chuẩn (Luôn hiển thị nổi bật trên cả Mobile, Tablet, Desktop) */}
           <Badge
             variant="outline"
-            className={`${status.style} font-black text-[11px] sm:text-xs px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 h-8 sm:h-9 shadow-2xs flex-shrink-0`}
+            className={`${status.style} font-black text-[11px] sm:text-xs px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 h-8 sm:h-9 shadow-2xs flex-shrink-0 ml-auto xl:ml-0`}
           >
             <span>{status.label}</span>
           </Badge>
