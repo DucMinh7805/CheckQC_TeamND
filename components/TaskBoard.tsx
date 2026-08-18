@@ -7,7 +7,7 @@ import { TaskCard } from "./TaskCard";
 import { Loader2, FolderCheck, Search, X, FileSpreadsheet, PlusCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { getVal, exportTasksToCSV } from "@/lib/helpers";
+import { getVal, exportTasksToCSV, cleanStr } from "@/lib/helpers";
 
 interface TaskBoardProps {
   onOpenDetails: (task: TaskItem) => void;
