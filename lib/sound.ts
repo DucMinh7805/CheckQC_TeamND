@@ -183,20 +183,40 @@ class SoundService {
     if (Notification.permission !== "granted") return;
 
     try {
-      const notif = new Notification(title, {
+      const options: NotificationOptions = {
         body,
         icon: "/Logo Marvel Team.png",
         badge: "/Logo Marvel Team.png",
         silent: false,
-        requireInteraction: true, // Giữ thông báo trên màn hình khóa điện thoại/PC
-      });
+        requireInteraction: true, // Giữ thông báo trên màn hình khóa
+        tag: `qc_task_notif_${Date.now()}`,
+      };
 
-      if (onClick) {
-        notif.onclick = () => {
-          window.focus();
-          onClick();
-          notif.close();
-        };
+      // Ưu tiên ServiceWorker showNotification cho thiết bị di động (Android / iOS PWA)
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.ready
+          .then((registration) => {
+            registration.showNotification(title, options);
+          })
+          .catch(() => {
+            const notif = new Notification(title, options);
+            if (onClick) {
+              notif.onclick = () => {
+                window.focus();
+                onClick();
+                notif.close();
+              };
+            }
+          });
+      } else {
+        const notif = new Notification(title, options);
+        if (onClick) {
+          notif.onclick = () => {
+            window.focus();
+            onClick();
+            notif.close();
+          };
+        }
       }
     } catch (e) {
       console.warn("Lỗi gửi thông báo OS:", e);

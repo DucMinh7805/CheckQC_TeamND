@@ -5,12 +5,19 @@ const GOOGLE_SCRIPT_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "https://script.google.com/macros/s/AKfycbyNT2uE0TqPZ0UTptU6IkFLrDkC2BVtEKIYZk59MfTgdYyHFQ_-mc-dcD_FS9PB5UU0zg/exec";
 
-// Proxy GET request tới Google Apps Script với Edge Cache ngắn hạn
-export async function GET() {
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+// Proxy GET request tới Google Apps Script theo thời gian thực (Zero Cache)
+export async function GET(req: NextRequest) {
   try {
-    const res = await fetch(GOOGLE_SCRIPT_URL, {
+    const url = new URL(req.url);
+    const timeParam = url.searchParams.get("t") || Date.now().toString();
+    const targetUrl = `${GOOGLE_SCRIPT_URL}?_t=${timeParam}`;
+
+    const res = await fetch(targetUrl, {
       method: "GET",
-      next: { revalidate: 10 },
+      cache: "no-store",
     });
 
     if (!res.ok) {
@@ -23,7 +30,9 @@ export async function GET() {
     const data = await res.json();
     return NextResponse.json(data, {
       headers: {
-        "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        Pragma: "no-cache",
+        Expires: "0",
       },
     });
   } catch (error: any) {
