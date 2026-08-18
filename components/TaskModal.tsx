@@ -644,24 +644,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </div>
               </div>
 
-              {/* Tên Đề Bài + Nút Icon Bút Chì */}
+              {/* Tên Đề Bài (Nút Sửa Đề đã nằm ở trên thanh công cụ) */}
               <div className="flex items-start gap-2 flex-wrap min-w-0">
                 <DialogTitle className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight break-all [overflow-wrap:anywhere] break-words flex-1 min-w-0">
                   {title}
                 </DialogTitle>
-
-                {canEditTaskInfo && !isEditingTaskInfo && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingTaskInfo(true)}
-                    title="Nhấn vào biểu tượng cây bút để sửa tên đề & nhập liệu"
-                    aria-label="Chỉnh sửa thông tin đề bài"
-                    className="p-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition flex items-center gap-1 text-[11px] font-bold shadow-2xs flex-shrink-0"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Chỉnh sửa</span>
-                  </button>
-                )}
               </div>
 
               {/* Khối Badges Thông Tin Đề Bài */}

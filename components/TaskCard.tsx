@@ -87,12 +87,12 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onOpenDetails }) => 
           : "border-slate-200/80 dark:border-slate-800 shadow-xs"
       }`}
     >
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-3.5 min-w-0 w-full">
-        {/* Cột trái: Tên đề, Khóa phân quyền và Thông tin phụ */}
-        <div className="space-y-2 min-w-0 flex-1 w-full overflow-hidden">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0 w-full">
+      <div className="flex flex-col gap-2.5 sm:gap-3 min-w-0 w-full">
+        {/* Hàng trên: Tên đề bài (trái) + Badge Trạng thái & Nút thao tác (phải) */}
+        <div className="flex items-start justify-between gap-2.5 sm:gap-3 min-w-0 w-full">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0 flex-1">
             <h3
-              className="font-black text-sm sm:text-lg text-slate-900 dark:text-white group-hover:text-[var(--accent-primary)] dark:group-hover:text-[var(--accent-neon)] transition-colors leading-snug break-all [overflow-wrap:anywhere] break-words line-clamp-3 min-w-0 flex-1"
+              className="font-black text-sm sm:text-base lg:text-lg text-slate-900 dark:text-white group-hover:text-[var(--accent-primary)] dark:group-hover:text-[var(--accent-neon)] transition-colors leading-snug break-all [overflow-wrap:anywhere] break-words line-clamp-3 min-w-0"
               title={title}
             >
               {title}
@@ -110,7 +110,7 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onOpenDetails }) => 
               </Badge>
             )}
 
-            {/* Tag Cảnh Báo Ưu Tiên: Chỉ xuất hiện khi người dùng bật bộ lọc */}
+            {/* Tag Cảnh Báo Ưu Tiên */}
             {shouldHighlightMultiError && (
               <Badge
                 variant="outline"
@@ -132,82 +132,78 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onOpenDetails }) => 
             )}
           </div>
 
-          {/* Badges thông tin: Người làm, QC, Số câu, Thời gian */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-[11px] sm:text-xs font-bold text-slate-600 dark:text-slate-300">
-            {/* Bạn Nội Dung */}
-            <span className="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70 text-slate-800 dark:text-slate-200 transition-colors">
-              <UserIcon className="w-3.5 h-3.5 text-blue-500" />
-              <span>Nội dung: <strong className="text-slate-900 dark:text-white font-extrabold">{doerName}</strong></span>
-            </span>
+          {/* Cụm Trạng thái & Link: Hoàn toàn không có đường kẻ cắt ngang, liền mạch tự nhiên */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* Trên Desktop (xl+): Hiển thị thêm Link SP & Minh chứng */}
+            <div className="hidden xl:flex items-center gap-1.5 flex-wrap">
+              {linkSp && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(linkSp, "_blank");
+                  }}
+                  aria-label={`Mở link sản phẩm cho đề ${title}`}
+                  className="rounded-xl font-extrabold text-[11px] sm:text-xs text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/80 bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-100 hover:text-blue-800 flex items-center gap-1.5 h-7 sm:h-8 px-2.5 transition shadow-2xs"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Link SP</span>
+                </Button>
+              )}
 
-            {/* QC Phụ trách */}
-            <span className="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70 text-slate-800 dark:text-slate-200 transition-colors">
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-500" />
-              <span>QC: <strong className="text-slate-900 dark:text-white font-extrabold">{qcName}</strong></span>
-            </span>
+              {linkMc && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(linkMc, "_blank");
+                  }}
+                  aria-label={`Mở link minh chứng cho đề ${title}`}
+                  className="rounded-xl font-extrabold text-[11px] sm:text-xs text-purple-700 dark:text-purple-300 border-purple-200/80 dark:border-purple-800/80 bg-purple-50/50 dark:bg-purple-950/30 hover:bg-purple-100 hover:text-purple-800 flex items-center gap-1.5 h-7 sm:h-8 px-2.5 transition shadow-2xs"
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  <span>Minh chứng</span>
+                </Button>
+              )}
+            </div>
 
-            {/* Số câu */}
-            {questionsCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 bg-blue-50/80 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border border-blue-200/70 dark:border-blue-800/70 transition-colors">
-                <Hash className="w-3.5 h-3.5" />
-                <span>{questionsCount} câu</span>
-              </span>
-            )}
-
-            {/* Thời gian cập nhật */}
-            {timeFormatted && (
-              <span className="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70 text-slate-600 dark:text-slate-300 transition-colors">
-                <Clock className="w-3.5 h-3.5 text-slate-500" />
-                <span>{timeFormatted}</span>
-              </span>
-            )}
+            {/* Badge Trạng thái chuẩn: Nằm cùng hàng trên góc phải, vừa vặn và hài hòa trên cả 3 thiết bị */}
+            <Badge
+              variant="outline"
+              className={`${status.style} font-black text-[10px] sm:text-xs px-2.5 sm:px-3 py-1 rounded-xl uppercase tracking-wider flex items-center gap-1.5 h-7 sm:h-8 shadow-2xs flex-shrink-0`}
+            >
+              <span>{status.label}</span>
+            </Badge>
           </div>
         </div>
 
-        {/* Cột phải: Links sản phẩm (Desktop) & Trạng thái duyệt */}
-        <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0 pt-2 sm:pt-0 border-t border-slate-100 dark:border-slate-800 xl:border-0 justify-between xl:justify-end">
-          {/* Trên Desktop (xl+): Hiển thị thêm Link SP & Minh chứng */}
-          <div className="hidden xl:flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            {linkSp && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.open(linkSp, "_blank");
-                }}
-                aria-label={`Mở link sản phẩm cho đề ${title}`}
-                className="rounded-xl font-extrabold text-[11px] sm:text-xs text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/80 bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-100 hover:text-blue-800 flex items-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 transition shadow-2xs"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Link SP</span>
-              </Button>
-            )}
+        {/* Hàng dưới: Badges thông tin (Người làm, QC, Số câu, Thời gian) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-[11px] sm:text-xs font-bold text-slate-600 dark:text-slate-300">
+          <span className="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70 text-slate-800 dark:text-slate-200 transition-colors">
+            <UserIcon className="w-3.5 h-3.5 text-blue-500" />
+            <span>Nội dung: <strong className="text-slate-900 dark:text-white font-extrabold">{doerName}</strong></span>
+          </span>
 
-            {linkMc && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.open(linkMc, "_blank");
-                }}
-                aria-label={`Mở link minh chứng cho đề ${title}`}
-                className="rounded-xl font-extrabold text-[11px] sm:text-xs text-purple-700 dark:text-purple-300 border-purple-200/80 dark:border-purple-800/80 bg-purple-50/50 dark:bg-purple-950/30 hover:bg-purple-100 hover:text-purple-800 flex items-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 transition shadow-2xs"
-              >
-                <FolderOpen className="w-3.5 h-3.5" />
-                <span>Minh chứng</span>
-              </Button>
-            )}
-          </div>
+          <span className="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70 text-slate-800 dark:text-slate-200 transition-colors">
+            <ShieldCheck className="w-3.5 h-3.5 text-purple-500" />
+            <span>QC: <strong className="text-slate-900 dark:text-white font-extrabold">{qcName}</strong></span>
+          </span>
 
-          {/* Badge trạng thái chuẩn (Luôn hiển thị nổi bật trên cả Mobile, Tablet, Desktop) */}
-          <Badge
-            variant="outline"
-            className={`${status.style} font-black text-[11px] sm:text-xs px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 h-8 sm:h-9 shadow-2xs flex-shrink-0 ml-auto xl:ml-0`}
-          >
-            <span>{status.label}</span>
-          </Badge>
+          {questionsCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 bg-blue-50/80 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border border-blue-200/70 dark:border-blue-800/70 transition-colors">
+              <Hash className="w-3.5 h-3.5" />
+              <span>{questionsCount} câu</span>
+            </span>
+          )}
+
+          {timeFormatted && (
+            <span className="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70 text-slate-600 dark:text-slate-300 transition-colors">
+              <Clock className="w-3.5 h-3.5 text-slate-500" />
+              <span>{timeFormatted}</span>
+            </span>
+          )}
         </div>
       </div>
     </div>
