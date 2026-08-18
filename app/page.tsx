@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import dynamic from "next/dynamic";
 import { useApp } from "@/context/AppContext";
 import { AuthScreen } from "@/components/AuthScreen";
 import { Sidebar } from "@/components/Sidebar";
@@ -13,31 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 
-// Tách mã (Code Splitting) & Lazy load các component nặng (Chart.js, Modals) để tối ưu Performance / LCP / TBT
-const AdminDashboard = dynamic(
-  () => import("@/components/AdminDashboard").then((m) => m.AdminDashboard),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-44 bg-white dark:bg-slate-900 rounded-3xl animate-pulse border border-slate-200 dark:border-slate-800" />
-    ),
-  }
-);
-
-const QCDashboard = dynamic(
-  () => import("@/components/QCDashboard").then((m) => m.QCDashboard),
-  { ssr: false }
-);
-
-const TaskModal = dynamic(
-  () => import("@/components/TaskModal").then((m) => m.TaskModal),
-  { ssr: false }
-);
-
-const CreateTaskModal = dynamic(
-  () => import("@/components/CreateTaskModal").then((m) => m.CreateTaskModal),
-  { ssr: false }
-);
+import { AdminDashboard } from "@/components/AdminDashboard";
+import { QCDashboard } from "@/components/QCDashboard";
+import { TaskModal } from "@/components/TaskModal";
+import { CreateTaskModal } from "@/components/CreateTaskModal";
 
 export default function HomePage() {
   const {
