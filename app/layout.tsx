@@ -14,8 +14,15 @@ const beVietnamPro = Be_Vietnam_Pro({
 export const metadata: Metadata = {
   title: "Trung tâm Nội Dung - Hệ thống kiểm tra và rà soát nội dung",
   description: "Hệ thống kiểm tra và rà soát nội dung dành cho Team Nội Dung, QC và Admin",
+  manifest: "/manifest.json",
   icons: {
     icon: "/Logo Marvel Team.png",
+    apple: "/Logo Marvel Team.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "QC Nội Dung",
   },
 };
 

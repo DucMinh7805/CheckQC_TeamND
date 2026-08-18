@@ -68,6 +68,12 @@ export default function HomePage() {
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
+
+    // Đăng ký Service Worker cho PWA & nhận thông báo nền trên di động
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 

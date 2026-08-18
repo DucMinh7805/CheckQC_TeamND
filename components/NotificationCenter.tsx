@@ -19,7 +19,9 @@ import {
   User,
   ArrowRight,
   RotateCcw,
+  Volume2,
 } from "lucide-react";
+import { soundService } from "@/lib/sound";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -303,19 +305,32 @@ export const NotificationCenter: React.FC = () => {
               </div>
             </div>
 
-            {/* Nút đánh dấu đọc tất cả */}
-            {unreadCount > 0 && (
+            {/* Nhóm nút thao tác: Thử chuông & Đánh dấu đọc */}
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={markAllAsRead}
-                aria-label="Đánh dấu tất cả thông báo là đã đọc"
-                className="rounded-xl border-blue-300 dark:border-blue-800 text-blue-800 dark:text-blue-200 bg-blue-50/60 dark:bg-blue-950/40 hover:bg-blue-100 font-extrabold text-[11px] sm:text-xs flex items-center gap-1.5 self-start sm:self-auto py-1.5 px-3 shadow-2xs flex-shrink-0"
+                onClick={() => soundService.playNotificationSound("alert")}
+                aria-label="Thử âm thanh chuông thông báo"
+                className="rounded-xl border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 bg-amber-50/60 dark:bg-amber-950/40 hover:bg-amber-100 font-extrabold text-[11px] sm:text-xs flex items-center gap-1.5 py-1.5 px-3 shadow-2xs flex-shrink-0"
               >
-                <Check className="w-3.5 h-3.5" />
-                <span>Đã đọc tất cả</span>
+                <Volume2 className="w-3.5 h-3.5 text-amber-600" />
+                <span>Thử chuông</span>
               </Button>
-            )}
+
+              {unreadCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={markAllAsRead}
+                  aria-label="Đánh dấu tất cả thông báo là đã đọc"
+                  className="rounded-xl border-blue-300 dark:border-blue-800 text-blue-800 dark:text-blue-200 bg-blue-50/60 dark:bg-blue-950/40 hover:bg-blue-100 font-extrabold text-[11px] sm:text-xs flex items-center gap-1.5 py-1.5 px-3 shadow-2xs flex-shrink-0"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Đã đọc tất cả</span>
+                </Button>
+              )}
+            </div>
           </DialogHeader>
 
           {/* Thanh Tab Lọc Phân Loại Thông Báo - Hỗ trợ vuốt ngang mượt mà */}

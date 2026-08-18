@@ -374,11 +374,38 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  // Đồng bộ dữ liệu ngầm thời gian thực (Silent Real-time Sync không làm giật màn hình)
+  const syncDataSilently = useCallback(async () => {
+    try {
+      const json = await apiGet();
+      if (json && Array.isArray(json.data)) {
+        const validData: TaskItem[] = json.data.filter(
+          (t: TaskItem) => cleanStr(getVal(t, "Ai làm")) !== "" || cleanStr(getVal(t, "Tên đề")) !== ""
+        );
+        if (validData.length > 0) {
+          setAppData(validData);
+        }
+        if (Array.isArray(json.users) && json.users.length > 0) {
+          setListUsers(json.users);
+        }
+      }
+    } catch (e) {
+      // Bỏ qua lỗi kết nối ngầm, giữ nguyên dữ liệu hiện tại
+    }
+  }, []);
+
   useEffect(() => {
     if (currentUser) {
       loadData();
+
+      // Đồng bộ thời gian thực mỗi 10 giây (Tự động nhận thông báo & lỗi mới từ người khác)
+      const pollInterval = setInterval(() => {
+        syncDataSilently();
+      }, 10000);
+
+      return () => clearInterval(pollInterval);
     }
-  }, [currentUser, loadData]);
+  }, [currentUser, loadData, syncDataSilently]);
 
   const setSelectedMonth = useCallback((month: string) => {
     setSelectedMonthState(month);
