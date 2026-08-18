@@ -109,34 +109,42 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastLoadedRowIndexRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (isOpen && task) {
-      setTitle(getVal(task, "Tên đề") || "Đề bài");
-      setSoCau(getVal(task, "Số câu") || "");
-      setWorkerName(getVal(task, "Ai làm") || "");
-      setQcName(getVal(task, "QC") || "");
-      setLinkSp(getVal(task, "Link sản phẩm") || "");
-      setMinhChung(getVal(task, "Minh chứng") || "");
-      setUserFb(getVal(task, "Nội Dung Phản hồi") || "");
-      setQcFb(getVal(task, "Phản hồi của QC") || "");
-      setLoi1(getVal(task, "Lỗi lần 1") || "");
-      setLoi2(getVal(task, "Lỗi lần 2") || "");
-      setLoi3(getVal(task, "Lỗi lần 3") || "");
-      setNote(getVal(task, "Note") || "");
-      setActionError(null);
-      setActionSuccess(null);
-      setShowHistory(false);
-      setShowTaskInfo(true);
-      setIsEditingTaskInfo(false);
-      setShouldNotify(true);
-      setActiveLinkField(null);
-      setEditingTargetLink(null);
-      setLinkTitle("");
-      setNewLinkUrl("");
-      setCopiedUrl(null);
+      // Chỉ nạp dữ liệu từ props khi mở modal mới (hoặc mở đề khác)
+      // Tuyệt đối KHÔNG ghi đè khi người dùng đang mở và gõ nội dung
+      if (lastLoadedRowIndexRef.current !== task.row_index) {
+        lastLoadedRowIndexRef.current = task.row_index;
+        setTitle(getVal(task, "Tên đề") || "Đề bài");
+        setSoCau(getVal(task, "Số câu") || "");
+        setWorkerName(getVal(task, "Ai làm") || "");
+        setQcName(getVal(task, "QC") || "");
+        setLinkSp(getVal(task, "Link sản phẩm") || "");
+        setMinhChung(getVal(task, "Minh chứng") || "");
+        setUserFb(getVal(task, "Nội Dung Phản hồi") || "");
+        setQcFb(getVal(task, "Phản hồi của QC") || "");
+        setLoi1(getVal(task, "Lỗi lần 1") || "");
+        setLoi2(getVal(task, "Lỗi lần 2") || "");
+        setLoi3(getVal(task, "Lỗi lần 3") || "");
+        setNote(getVal(task, "Note") || "");
+        setActionError(null);
+        setActionSuccess(null);
+        setShowHistory(false);
+        setShowTaskInfo(true);
+        setIsEditingTaskInfo(false);
+        setShouldNotify(true);
+        setActiveLinkField(null);
+        setEditingTargetLink(null);
+        setLinkTitle("");
+        setNewLinkUrl("");
+        setCopiedUrl(null);
+      }
+    } else if (!isOpen) {
+      lastLoadedRowIndexRef.current = null;
     }
-  }, [isOpen, task?.row_index]);
+  }, [isOpen, task]);
 
   if (!task) return null;
 
@@ -252,6 +260,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       task_title: title,
       so_cau: soCau,
       worker_name: workerName,
+      worker_email: workerEmail,
       qc_name: qcName,
       link_sp: linkSp,
       minh_chung: minhChung,
@@ -261,6 +270,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       nd_phan_hoi: userFb,
       qc_phan_hoi: qcFb,
       note: note,
+      should_notify: shouldNotify,
+      sender_role: effectiveRole,
+      sender_name: currentUser?.name || (isWorker ? workerName : qcName),
     };
 
     const res = await saveTaskDetails(payload);
@@ -286,6 +298,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     const res = await updateTaskStatus({
       row_index: task.row_index,
       qc_done: valToSet,
+      task_title: title,
+      worker_name: workerName,
+      worker_email: workerEmail,
+      qc_name: qcName,
+      should_notify: shouldNotify,
+      sender_role: effectiveRole,
+      sender_name: currentUser?.name || qcName,
     });
     setIsUpdatingStatus(false);
 
@@ -1010,7 +1029,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
                   />
                   <span className="text-xs sm:text-sm font-bold text-blue-900 dark:text-blue-200 whitespace-nowrap">
-                    Báo lại cho QC & Admin
+                    Báo lại cho QC
                   </span>
                 </label>
               )}

@@ -209,12 +209,30 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.style.setProperty("--accent-neon", config.neonDark);
   }, []);
 
-  // Khởi tạo Auth, Theme và Cấu hình từ localStorage
+  // Khởi tạo Auth, Theme, Cấu hình và Dữ liệu Cache từ localStorage để hiển thị tức thì (0.01s)
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem("qc_auth");
       if (savedUser) {
         setCurrentUser(JSON.parse(savedUser));
+      }
+      const cachedUsers = localStorage.getItem("qc_users_cache");
+      if (cachedUsers) {
+        try {
+          const parsed = JSON.parse(cachedUsers);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setListUsers(parsed);
+          }
+        } catch (e) {}
+      }
+      const cachedData = localStorage.getItem("qc_app_data_cache");
+      if (cachedData) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setAppData(parsed);
+          }
+        } catch (e) {}
       }
       const savedMonth = localStorage.getItem("qc_selected_month");
       if (savedMonth) {
@@ -254,16 +272,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     applyAccentCSS(accent);
   }, [applyAccentCSS]);
 
-  // Gọi API GET
+  // Gọi API GET siêu tốc (Có fallback và timeout)
   const apiGet = async () => {
     try {
       const res = await fetch(PRIMARY_API, { cache: "no-store" });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const json = await res.json();
+        if (json && (Array.isArray(json.data) || Array.isArray(json.users))) {
+          return json;
+        }
+      }
     } catch (e) {
-      console.warn("Proxy GET lỗi, gọi trực tiếp fallback...");
+      console.warn("Proxy GET lỗi, chuyển sang gọi trực tiếp fallback...", e);
     }
+    
+    // Fallback gọi trực tiếp Google Apps Script
     const resDirect = await fetch(FALLBACK_DIRECT_API);
-    return await resDirect.json();
+    if (resDirect.ok) return await resDirect.json();
+    throw new Error("Không thể kết nối đến máy chủ dữ liệu!");
   };
 
   // Gọi API POST
@@ -286,14 +312,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return await resDirect.json();
   };
 
-  // Lấy danh sách nhân sự để đăng nhập
+  // Lấy danh sách nhân sự để đăng nhập (Tự lưu cache để lần sau mở lên có ngay lập tức)
   const fetchUsersForLogin = useCallback(async () => {
     setIsSyncingUsers(true);
     setError(null);
     try {
       const json = await apiGet();
-      if (json && Array.isArray(json.users)) {
+      if (json && Array.isArray(json.users) && json.users.length > 0) {
         setListUsers(json.users);
+        try {
+          localStorage.setItem("qc_users_cache", JSON.stringify(json.users));
+        } catch (e) {}
       }
     } catch (e: any) {
       setError(e.message || "Lỗi tải danh sách nhân sự.");
@@ -331,7 +360,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setIsCreateModalOpen(false);
   }, []);
 
-  // Tải dữ liệu toàn bộ bảng tính
+  // Tải dữ liệu toàn bộ bảng tính (kèm lưu cache)
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -343,9 +372,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           (t: TaskItem) => cleanStr(getVal(t, "Ai làm")) !== "" || cleanStr(getVal(t, "Tên đề")) !== ""
         );
         setAppData(validData);
+        try {
+          localStorage.setItem("qc_app_data_cache", JSON.stringify(validData));
+        } catch (e) {}
 
-        if (Array.isArray(json.users)) {
+        if (Array.isArray(json.users) && json.users.length > 0) {
           setListUsers(json.users);
+          try {
+            localStorage.setItem("qc_users_cache", JSON.stringify(json.users));
+          } catch (e) {}
         }
 
         const rawMonths = Array.from(
@@ -384,9 +419,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         );
         if (validData.length > 0) {
           setAppData(validData);
+          try {
+            localStorage.setItem("qc_app_data_cache", JSON.stringify(validData));
+          } catch (e) {}
         }
         if (Array.isArray(json.users) && json.users.length > 0) {
           setListUsers(json.users);
+          try {
+            localStorage.setItem("qc_users_cache", JSON.stringify(json.users));
+          } catch (e) {}
         }
       }
     } catch (e) {

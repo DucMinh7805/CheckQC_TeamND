@@ -16,10 +16,15 @@ export async function GET(req: NextRequest) {
     const timeParam = url.searchParams.get("t") || Date.now().toString();
     const targetUrl = `${GOOGLE_SCRIPT_URL}?_t=${timeParam}`;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
+
     const res = await fetch(targetUrl, {
       method: "GET",
       cache: "no-store",
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!res.ok) {
       return NextResponse.json(
@@ -50,10 +55,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
     const res = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!res.ok) {
       return NextResponse.json(
@@ -66,22 +76,49 @@ export async function POST(req: NextRequest) {
     
     // Nếu có subscriptions trả về từ Apps Script (Web Push)
     if (data.subscriptions && Array.isArray(data.subscriptions)) {
-      // Xác định ai là người nhận (Ai làm, hoặc QC)
-      const targetUser = body.qc_done ? body.worker_name : body.qc_name; 
-      const targetUserClean = (targetUser || "").toLowerCase().replace(/\s/g, "");
-      
-      const title = body.qc_done ? `[Phản hồi] ${body.task_title}` : `[Lỗi QC] ${body.task_title}`;
+      const isWorkerSaving = body.sender_role === "WORKER" || (body.nd_phan_hoi && !body.loi_1 && !body.loi_2 && !body.loi_3 && !body.qc_phan_hoi);
+      const isQCSaving = !isWorkerSaving;
+
+      let targetNames: string[] = [];
+      let title = "";
       let message = "";
-      if (body.qc_done) {
-        message = `${body.worker_name} đã xử lý/phản hồi lỗi.`;
+
+      if (isQCSaving) {
+        // QC / Admin lưu -> Gửi tới Bạn làm ND (worker_name)
+        if (body.worker_name) targetNames.push(body.worker_name);
+        
+        if (body.qc_done === "✅") {
+          title = `[Đã Duyệt Pass] ${body.task_title || "Đề bài"}`;
+          message = `QC ${body.qc_name || ""} đã duyệt Pass cho đề bài này.`;
+        } else if (body.qc_done === "❌") {
+          title = `[QC Báo Lỗi] ${body.task_title || "Đề bài"}`;
+          message = `QC ${body.qc_name || ""} đánh dấu lỗi / cần làm lại.`;
+        } else {
+          title = `[QC Cập Nhật] ${body.task_title || "Đề bài"}`;
+          let details: string[] = [];
+          if (body.loi_1) details.push(`Lỗi 1: ${body.loi_1}`);
+          if (body.loi_2) details.push(`Lỗi 2: ${body.loi_2}`);
+          if (body.loi_3) details.push(`Lỗi 3: ${body.loi_3}`);
+          if (body.qc_phan_hoi) details.push(`QC nhắn: ${body.qc_phan_hoi}`);
+          if (body.note) details.push(`Ghi chú: ${body.note}`);
+          message = details.length > 0 ? details.join(" • ") : `QC ${body.qc_name || ""} vừa cập nhật thông tin đề bài.`;
+        }
       } else {
-        message = `QC bắt lỗi: ${body.loi_1 || ""} ${body.loi_2 || ""} ${body.loi_3 || ""}`;
+        // Bạn ND lưu / phản hồi -> Gửi tới QC và Admin
+        if (body.qc_name) targetNames.push(body.qc_name);
+        title = `[Nội Dung Phản Hồi] ${body.task_title || "Đề bài"}`;
+        message = `${body.worker_name || "Nội Dung"}: ${body.nd_phan_hoi || "Đã cập nhật bài làm."}`;
       }
 
-      // Lọc các subscription của đúng người dùng mục tiêu
+      // Gửi Web Push tới tất cả các thiết bị của người dùng mục tiêu
       data.subscriptions.forEach((subObj: any) => {
         const subName = (subObj.name || "").toLowerCase().replace(/\s/g, "");
-        if (targetUserClean && subName.includes(targetUserClean) && subObj.subscription) {
+        const isTarget = targetNames.some((t) => {
+          const tClean = (t || "").toLowerCase().replace(/\s/g, "");
+          return tClean && (subName.includes(tClean) || tClean.includes(subName));
+        });
+
+        if (isTarget && subObj.subscription) {
           sendWebPush(subObj.subscription, {
             title,
             body: message,

@@ -30,14 +30,15 @@ export const AuthScreen: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
 
-  // Tự động tải danh sách thành viên ngay khi mở trang
+  // Tự động tải danh sách thành viên ngay khi mở trang (chỉ gọi 1 lần khi mount)
   useEffect(() => {
-    if (listUsers.length === 0 && !isSyncingUsers) {
-      fetchUsersForLogin().catch(() => {
+    fetchUsersForLogin().catch(() => {
+      // Nếu đã có cache từ trước thì không hiện lỗi gây hoang mang
+      if (listUsers.length === 0) {
         setErrorMessage("Lỗi kết nối máy chủ Google! Vui lòng bấm thử lại.");
-      });
-    }
-  }, [listUsers.length, isSyncingUsers, fetchUsersForLogin]);
+      }
+    });
+  }, [fetchUsersForLogin]);
 
   const handleSyncUsers = async () => {
     setErrorMessage("");

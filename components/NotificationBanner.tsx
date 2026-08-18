@@ -99,72 +99,88 @@ export const NotificationBanner: React.FC = () => {
       const qcFb = cleanStr(getVal(task, "Phản hồi của QC"));
       const userFb = cleanStr(getVal(task, "Nội Dung Phản hồi"));
 
+      const note = cleanStr(getVal(task, "Note"));
+
       let errDetail = "";
       if (l1) errDetail += `• Lỗi 1: ${l1} `;
       if (l2) errDetail += `• Lỗi 2: ${l2} `;
       if (l3) errDetail += `• Lỗi 3: ${l3} `;
       if (qcFb) errDetail += `• QC nhắn: ${qcFb} `;
 
-      // 1. Cho Bạn làm nội dung: Báo khi QC bắt lỗi hoặc phản hồi cập nhật
+      // 1. Cho Bạn làm nội dung: Báo khi QC cập nhật thông tin, bắt lỗi, ghi chú hoặc phản hồi
       if (isWorker) {
         if (doer === myName || doer.includes(myName)) {
+          const signature = `worker_notif_${task.row_index}_${rawTime}_${l1}_${l2}_${l3}_${qcFb}_${note}_${status.code}`;
+          
+          let titlePrefix = "[QC Cập Nhật]";
+          let notifType: "PASS" | "WRONG" | "ERROR" | "FEEDBACK" | "NEW_TASK" = "FEEDBACK";
           if (status.code === "ERROR") {
-            const signature = `worker_err_${task.row_index}_${l1}_${l2}_${l3}_${qcFb}_${status.code}`;
-            candidates.push({
-              id: signature,
-              rowIndex: task.row_index,
-              taskTitle: title,
-              sender: qcOriginal,
-              senderLabel: "QC Báo Lỗi",
-              type: "ERROR",
-              title: `[Lỗi QC] ${title}`,
-              message: errDetail.trim() || `QC ${qcOriginal} báo lỗi cần khắc phục.`,
-              time: timeStr,
-              isRead: false,
-            });
+            titlePrefix = "[QC Báo Lỗi]";
+            notifType = "ERROR";
+          } else if (status.code === "PASS") {
+            titlePrefix = "[Đã Duyệt Pass]";
+            notifType = "PASS";
+          } else if (status.code === "WRONG") {
+            titlePrefix = "[QC Sai]";
+            notifType = "WRONG";
           }
+
+          let msg = "";
+          if (errDetail.trim()) msg = errDetail.trim();
+          else if (qcFb) msg = `QC nhắn: ${qcFb}`;
+          else if (note) msg = `Ghi chú: ${note}`;
+          else msg = `QC ${qcOriginal} vừa cập nhật đề bài (${status.label}).`;
+
+          candidates.push({
+            id: signature,
+            rowIndex: task.row_index,
+            taskTitle: title,
+            sender: qcOriginal,
+            senderLabel: `QC ${qcOriginal}`,
+            type: notifType,
+            title: `${titlePrefix} ${title}`,
+            message: msg,
+            time: timeStr,
+            isRead: false,
+          });
         }
       }
 
-      // 2. Cho QC: Báo khi Bạn Nội Dung phản hồi / giải trình
+      // 2. Cho QC: Báo khi Bạn Nội Dung phản hồi / giải trình / cập nhật
       if (isQC) {
         const qc = cleanStr(getVal(task, "QC")).toLowerCase();
         if (qc === myName || qc.includes(myName)) {
-          if (userFb && status.code !== "PASS") {
-            const signature = `qc_fb_${task.row_index}_${userFb}_${status.code}`;
-            candidates.push({
-              id: signature,
-              rowIndex: task.row_index,
-              taskTitle: title,
-              sender: doerOriginal,
-              senderLabel: "Nội Dung Phản Hồi",
-              type: "FEEDBACK",
-              title: `[Đã phản hồi] ${title}`,
-              message: `${doerOriginal}: ${userFb}`,
-              time: timeStr,
-              isRead: false,
-            });
-          }
-        }
-      }
-
-      // 3. Cho Admin: Báo tất cả phản hồi hoặc lỗi mới phát sinh
-      if (isAdmin) {
-        if (userFb && status.code !== "PASS") {
-          const signature = `admin_fb_${task.row_index}_${userFb}_${status.code}`;
+          const signature = `qc_notif_${task.row_index}_${rawTime}_${userFb}_${status.code}`;
           candidates.push({
             id: signature,
             rowIndex: task.row_index,
             taskTitle: title,
             sender: doerOriginal,
-            senderLabel: "Nội Dung Phản Hồi",
+            senderLabel: `Nội Dung ${doerOriginal}`,
             type: "FEEDBACK",
-            title: `[Nội Dung] ${title}`,
-            message: `${doerOriginal}: ${userFb}`,
+            title: `[Nội Dung Phản Hồi] ${title}`,
+            message: userFb ? `${doerOriginal}: ${userFb}` : `${doerOriginal} vừa cập nhật bài làm.`,
             time: timeStr,
             isRead: false,
           });
         }
+      }
+
+      // 3. Cho Admin: Báo tất cả phản hồi hoặc cập nhật mới phát sinh
+      if (isAdmin) {
+        const signature = `admin_notif_${task.row_index}_${rawTime}_${userFb}_${qcFb}_${l1}_${l2}_${l3}_${note}_${status.code}`;
+        candidates.push({
+          id: signature,
+          rowIndex: task.row_index,
+          taskTitle: title,
+          sender: `${doerOriginal} / ${qcOriginal}`,
+          senderLabel: "Cập nhật đề",
+          type: status.code === "ERROR" ? "ERROR" : "FEEDBACK",
+          title: `[Cập nhật] ${title}`,
+          message: userFb ? `${doerOriginal}: ${userFb}` : (qcFb ? `QC ${qcOriginal}: ${qcFb}` : `Trạng thái: ${status.label}`),
+          time: timeStr,
+          isRead: false,
+        });
       }
     });
 

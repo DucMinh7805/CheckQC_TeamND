@@ -78,6 +78,9 @@ export interface SaveTaskPayload {
   qc_phan_hoi?: string;
   note?: string;
   send_email?: boolean;
+  should_notify?: boolean;
+  sender_role?: string;
+  sender_name?: string;
 }
 
 export interface UpdateStatusPayload {
@@ -86,7 +89,11 @@ export interface UpdateStatusPayload {
   task_title?: string;
   worker_name?: string;
   worker_email?: string;
+  qc_name?: string;
   send_email?: boolean;
+  should_notify?: boolean;
+  sender_role?: string;
+  sender_name?: string;
 }
 
 export interface WorkerStatItem {
