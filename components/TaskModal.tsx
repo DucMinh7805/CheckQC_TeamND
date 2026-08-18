@@ -111,7 +111,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (task) {
+    if (isOpen && task) {
       setTitle(getVal(task, "Tên đề") || "Đề bài");
       setSoCau(getVal(task, "Số câu") || "");
       setWorkerName(getVal(task, "Ai làm") || "");
@@ -136,7 +136,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setNewLinkUrl("");
       setCopiedUrl(null);
     }
-  }, [task]);
+  }, [isOpen, task?.row_index]);
 
   if (!task) return null;
 

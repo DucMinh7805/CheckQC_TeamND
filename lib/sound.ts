@@ -106,14 +106,15 @@ class SoundService {
         // Chuông báo 3 nốt cao cấp phong cách Zalo / Shopee (A5 -> C#6 -> E6)
         // Âm lượng lớn (Gain 0.85) với hòa âm Sine + Triangle
         const masterGain = ctx.createGain();
-        masterGain.gain.setValueAtTime(0.85, now);
-        masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+        masterGain.gain.setValueAtTime(1.5, now); // Lớn hơn bình thường (có thể hơi gắt để dễ chú ý)
+        masterGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
         masterGain.connect(ctx.destination);
 
         const notes = [
-          { freq: 880.0, time: 0.0, dur: 0.2 },    // A5
-          { freq: 1108.73, time: 0.1, dur: 0.22 }, // C#6
-          { freq: 1318.51, time: 0.22, dur: 0.4 }, // E6
+          { freq: 880.0, time: 0.0, dur: 0.25 },    // A5
+          { freq: 1108.73, time: 0.15, dur: 0.25 }, // C#6
+          { freq: 1318.51, time: 0.3, dur: 0.3 },   // E6
+          { freq: 1760.00, time: 0.45, dur: 0.6 },  // A6 ngân dài
         ];
 
         notes.forEach((n) => {
@@ -127,7 +128,7 @@ class SoundService {
           osc1.frequency.setValueAtTime(n.freq, now + n.time);
           osc2.frequency.setValueAtTime(n.freq * 2, now + n.time); // Họa âm bậc 2
 
-          noteGain.gain.setValueAtTime(0.7, now + n.time);
+          noteGain.gain.setValueAtTime(0.9, now + n.time);
           noteGain.gain.exponentialRampToValueAtTime(0.01, now + n.time + n.dur);
 
           osc1.connect(noteGain);

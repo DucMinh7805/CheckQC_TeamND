@@ -27,6 +27,48 @@ export const NotificationBanner: React.FC = () => {
     const granted = await soundService.requestNotificationPermission();
     setHasPermission(granted);
     soundService.playNotificationSound("alert");
+
+    // Đăng ký Web Push nếu được cấp quyền
+    if (granted && "serviceWorker" in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (publicVapidKey) {
+          // Lấy subscription hiện tại hoặc tạo mới
+          let subscription = await registration.pushManager.getSubscription();
+          if (!subscription) {
+            // Helper convert base64 to Uint8Array
+            const urlBase64ToUint8Array = (base64String: string) => {
+              const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+              const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+              const rawData = window.atob(base64);
+              const outputArray = new Uint8Array(rawData.length);
+              for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+              }
+              return outputArray;
+            };
+
+            subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
+            });
+          }
+          
+          // Gửi lên server lưu vào Google Sheets
+          await fetch("/api/push/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: currentUser?.name || "Unknown",
+              subscription,
+            }),
+          });
+        }
+      } catch (err) {
+        console.error("Lỗi đăng ký Web Push:", err);
+      }
+    }
   };
 
   // Quản lý và phát hiện thông báo mới theo thời gian thực (Real-time Hash Signature)
