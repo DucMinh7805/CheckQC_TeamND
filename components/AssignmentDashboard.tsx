@@ -165,7 +165,7 @@ export const AssignmentDashboard: React.FC = () => {
               <FileCheck className="w-4 h-4 text-slate-500" />
             </div>
             <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">
-              {teamQuestionTotals.totalTasks} <span className="text-xs font-bold text-slate-500">đề</span>
+              {teamQuestionTotals?.totalTasks ?? 0} <span className="text-xs font-bold text-slate-500">đề</span>
             </p>
           </div>
 
@@ -178,7 +178,7 @@ export const AssignmentDashboard: React.FC = () => {
               <Hash className="w-4 h-4 text-blue-600" />
             </div>
             <p className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 mt-2">
-              {teamQuestionTotals.totalAssignedQuestions.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-500">câu</span>
+              {(teamQuestionTotals?.totalAssignedQuestions || 0).toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-500">câu</span>
             </p>
           </div>
 
@@ -191,7 +191,7 @@ export const AssignmentDashboard: React.FC = () => {
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
             <p className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
-              {teamQuestionTotals.totalCheckedQuestions.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-500">câu</span>
+              {(teamQuestionTotals?.totalCheckedQuestions || 0).toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-500">câu</span>
             </p>
           </div>
 
@@ -205,14 +205,14 @@ export const AssignmentDashboard: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-2 mt-2">
               <p className="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400">
-                {teamQuestionTotals.completionRate}%
+                {teamQuestionTotals?.completionRate ?? 0}%
               </p>
             </div>
             {/* Progress bar */}
             <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full mt-2 overflow-hidden">
               <div
                 className="bg-purple-600 h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, teamQuestionTotals.completionRate)}%` }}
+                style={{ width: `${Math.min(100, teamQuestionTotals?.completionRate ?? 0)}%` }}
               />
             </div>
           </div>
@@ -249,6 +249,7 @@ export const AssignmentDashboard: React.FC = () => {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm font-semibold">
                 {qcQuestionStats.map((qc) => {
                   const isExpanded = expandedQC === qc.qcName;
+                  const compRate = qc.completionRate ?? 0;
                   return (
                     <React.Fragment key={qc.qcName}>
                       <tr
@@ -258,7 +259,7 @@ export const AssignmentDashboard: React.FC = () => {
                         <td className="py-3.5 px-4 sm:px-6">
                           <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 flex items-center justify-center font-black text-xs">
-                              {qc.qcName.charAt(0).toUpperCase()}
+                              {qc.qcName ? qc.qcName.charAt(0).toUpperCase() : "Q"}
                             </div>
                             <span className="font-black text-slate-900 dark:text-white">
                               {qc.qcName}
@@ -267,32 +268,32 @@ export const AssignmentDashboard: React.FC = () => {
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-bold text-slate-700 dark:text-slate-300">
-                          {qc.totalAssignedTasks}
+                          {qc.totalAssignedTasks ?? 0}
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-black text-blue-700 dark:text-blue-300">
-                          {qc.totalAssignedQuestions.toLocaleString("vi-VN")}
+                          {(qc.totalAssignedQuestions || 0).toLocaleString("vi-VN")}
                         </td>
 
                         <td className="py-3.5 px-4 text-center font-black text-emerald-700 dark:text-emerald-300">
-                          {qc.totalCheckedQuestions.toLocaleString("vi-VN")}
+                          {(qc.totalCheckedQuestions || 0).toLocaleString("vi-VN")}
                         </td>
 
                         <td className="py-3.5 px-4 text-center">
                           <div className="flex flex-col gap-1 items-center justify-center">
                             <span className="font-black text-xs text-purple-700 dark:text-purple-300">
-                              {qc.completionRate}%
+                              {compRate}%
                             </span>
                             <div className="w-28 bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-300 ${
-                                  qc.completionRate >= 80
+                                  compRate >= 80
                                     ? "bg-emerald-500"
-                                    : qc.completionRate >= 40
+                                    : compRate >= 40
                                     ? "bg-blue-500"
                                     : "bg-amber-500"
                                 }`}
-                                style={{ width: `${Math.min(100, qc.completionRate)}%` }}
+                                style={{ width: `${Math.min(100, compRate)}%` }}
                               />
                             </div>
                           </div>
@@ -325,15 +326,15 @@ export const AssignmentDashboard: React.FC = () => {
                             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 space-y-3 shadow-inner">
                               <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                                 <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                                  Danh sách đề bài phân công cho {qc.qcName} ({qc.tasksList.length} đề)
+                                  Danh sách đề bài phân công cho {qc.qcName} ({(qc.tasksList || []).length} đề)
                                 </h4>
                                 <span className="text-[11px] font-bold text-slate-500">
-                                  {qc.totalCheckedQuestions} / {qc.totalAssignedQuestions} câu đã check
+                                  {qc.totalCheckedQuestions ?? 0} / {qc.totalAssignedQuestions ?? 0} câu đã check
                                 </span>
                               </div>
 
                               <div className="space-y-2">
-                                {qc.tasksList.map((t, idx) => (
+                                {(qc.tasksList || []).map((t, idx) => (
                                   <div
                                     key={idx}
                                     className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5"

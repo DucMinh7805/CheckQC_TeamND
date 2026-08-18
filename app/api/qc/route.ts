@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     const targetUrl = `${GOOGLE_SCRIPT_URL}?_t=${timeParam}`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     const res = await fetch(targetUrl, {
       method: "GET",
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     const res = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
