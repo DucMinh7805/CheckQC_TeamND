@@ -55,9 +55,9 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ onOpenDetails }) => {
     if (!searchQuery.trim()) return filteredTasks;
     const query = searchQuery.trim().toLowerCase();
     return filteredTasks.filter((t) => {
-      const title = (getVal(t, "Tên đề") || "").toLowerCase();
-      const doer = (getVal(t, "Ai làm") || "").toLowerCase();
-      const qc = (getVal(t, "QC") || "").toLowerCase();
+      const title = cleanStr(getVal(t, "Tên đề")).toLowerCase();
+      const doer = cleanStr(getVal(t, "Ai làm")).toLowerCase();
+      const qc = cleanStr(getVal(t, "QC")).toLowerCase();
       return (
         title.includes(query) || doer.includes(query) || qc.includes(query)
       );

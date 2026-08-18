@@ -19,9 +19,9 @@ export const getVal = (item: TaskItem, keyName: string): any => {
   return "";
 };
 
-export const formatURL = (url: string): string => {
+export const formatURL = (url: any): string => {
   if (!url) return "";
-  const trimmed = url.trim();
+  const trimmed = String(url).trim();
   if (!trimmed) return "";
   if (/^https?:\/\//i.test(trimmed)) {
     return trimmed;
@@ -311,19 +311,19 @@ export const exportTasksToCSV = (tasks: TaskItem[], selectedMonth: string) => {
       idx + 1,
       `"${getVal(task, "ID/ tháng") || getVal(task, "ID/tháng") || ""}"`,
       `"${getVal(task, "Thời gian") || ""}"`,
-      `"${(getVal(task, "Tên đề") || "").replace(/"/g, '""')}"`,
+      `"${cleanStr(getVal(task, "Tên đề")).replace(/"/g, '""')}"`,
       getVal(task, "Số câu") || 0,
       `"${getVal(task, "Ai làm") || ""}"`,
       `"${getVal(task, "QC") || ""}"`,
       `"${status.label}"`,
       `"${getVal(task, "Link sản phẩm") || ""}"`,
       `"${getVal(task, "Minh chứng") || ""}"`,
-      `"${(getVal(task, "Lỗi lần 1") || "").replace(/"/g, '""')}"`,
-      `"${(getVal(task, "Lỗi lần 2") || "").replace(/"/g, '""')}"`,
-      `"${(getVal(task, "Lỗi lần 3") || "").replace(/"/g, '""')}"`,
-      `"${(getVal(task, "Nội Dung Phản hồi") || "").replace(/"/g, '""')}"`,
-      `"${(getVal(task, "Phản hồi của QC") || "").replace(/"/g, '""')}"`,
-      `"${(getVal(task, "Note") || "").replace(/"/g, '""')}"`,
+      `"${cleanStr(getVal(task, "Lỗi lần 1")).replace(/"/g, '""')}"`,
+      `"${cleanStr(getVal(task, "Lỗi lần 2")).replace(/"/g, '""')}"`,
+      `"${cleanStr(getVal(task, "Lỗi lần 3")).replace(/"/g, '""')}"`,
+      `"${cleanStr(getVal(task, "Nội Dung Phản hồi")).replace(/"/g, '""')}"`,
+      `"${cleanStr(getVal(task, "Phản hồi của QC")).replace(/"/g, '""')}"`,
+      `"${cleanStr(getVal(task, "Note")).replace(/"/g, '""')}"`,
     ].join(",");
   });
 
