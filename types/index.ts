@@ -132,3 +132,30 @@ export interface AppNotification {
   time: string;
   isRead: boolean;
 }
+
+// Kiểu dữ liệu phân công đề theo tháng (Sheet 2)
+export interface MonthlyAssignmentItem {
+  month: string;
+  task_title: string;
+  so_cau: number;
+  nd_done: boolean;
+  worker_name: string;
+  qc_name: string;
+  qc_done: boolean;
+  link_sp?: string;
+  link_de?: string;
+  note?: string;
+}
+
+export type MonthlyAssignmentsMap = Record<string, MonthlyAssignmentItem[]>;
+
+// Thống kê số câu và tiến độ QC theo tháng
+export interface QCQuestionStatItem {
+  qcName: string;
+  totalAssignedTasks: number;
+  totalAssignedQuestions: number;
+  totalCheckedQuestions: number;
+  completionRate: number;
+  tasksList: MonthlyAssignmentItem[];
+}
+

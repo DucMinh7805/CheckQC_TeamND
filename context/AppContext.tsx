@@ -20,6 +20,9 @@ import {
   UpdateStatusPayload,
   WorkerStatItem,
   QCStatItem,
+  MonthlyAssignmentItem,
+  MonthlyAssignmentsMap,
+  QCQuestionStatItem,
 } from "@/types";
 import {
   cleanStr,
@@ -66,6 +69,13 @@ interface TabCounts {
   PASS: number;
 }
 
+export interface TeamQuestionTotals {
+  totalTasks: number;
+  totalAssignedQuestions: number;
+  totalCheckedQuestions: number;
+  completionRate: number;
+}
+
 interface AppContextType {
   currentUser: User | null;
   listUsers: User[];
@@ -91,6 +101,14 @@ interface AppContextType {
   editingTask: TaskItem | null;
   isCreateModalOpen: boolean;
   impersonatedRole: string | null;
+  monthlyAssignments: MonthlyAssignmentsMap;
+  availableAssignmentMonths: string[];
+  selectedAssignmentMonth: string;
+  setSelectedAssignmentMonth: (month: string) => void;
+  qcQuestionStats: QCQuestionStatItem[];
+  teamQuestionTotals: TeamQuestionTotals;
+  adminActiveTab: 'TASKS' | 'ASSIGNMENT_REPORT';
+  setAdminActiveTab: (tab: 'TASKS' | 'ASSIGNMENT_REPORT') => void;
   setImpersonatedRole: (role: string | null) => void;
   setEditingTask: (task: TaskItem | null) => void;
   setIsCreateModalOpen: (open: boolean) => void;
@@ -197,6 +215,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [themeAccent, setThemeAccentState] = useState<ThemeAccent>("blue");
 
+  // Dữ liệu phân công đề theo tháng (Sheet 2) dành riêng cho Admin
+  const [monthlyAssignments, setMonthlyAssignments] = useState<MonthlyAssignmentsMap>({});
+  const [selectedAssignmentMonth, setSelectedAssignmentMonthState] = useState<string>("");
+  const [adminActiveTab, setAdminActiveTab] = useState<'TASKS' | 'ASSIGNMENT_REPORT'>('TASKS');
+
   // Áp dụng biến CSS tùy chỉnh màu chủ đạo cho toàn bộ ứng dụng
   const applyAccentCSS = useCallback((accent: ThemeAccent) => {
     const config = ACCENT_COLOR_MAP[accent] || ACCENT_COLOR_MAP.blue;
@@ -231,6 +254,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           const parsed = JSON.parse(cachedData);
           if (Array.isArray(parsed) && parsed.length > 0) {
             setAppData(parsed);
+          }
+        } catch (e) {}
+      }
+      const cachedMonthly = localStorage.getItem("qc_monthly_assignments_cache");
+      if (cachedMonthly) {
+        try {
+          const parsed = JSON.parse(cachedMonthly);
+          if (parsed && typeof parsed === "object") {
+            setMonthlyAssignments(parsed);
+            const mKeys = Object.keys(parsed);
+            if (mKeys.length > 0) setSelectedAssignmentMonthState(mKeys[0]);
           }
         } catch (e) {}
       }
@@ -383,6 +417,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           } catch (e) {}
         }
 
+        // Nhận diện dữ liệu phân công theo tháng
+        if (json.monthly_assignments && typeof json.monthly_assignments === "object") {
+          setMonthlyAssignments(json.monthly_assignments);
+          try {
+            localStorage.setItem("qc_monthly_assignments_cache", JSON.stringify(json.monthly_assignments));
+          } catch (e) {}
+
+          const mList = Object.keys(json.monthly_assignments);
+          if (mList.length > 0) {
+            setSelectedAssignmentMonthState((prev) => {
+              if (prev && mList.includes(prev)) return prev;
+              return mList[0];
+            });
+          }
+        }
+
         const rawMonths = Array.from(
           new Set(
             validData
@@ -427,6 +477,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           setListUsers(json.users);
           try {
             localStorage.setItem("qc_users_cache", JSON.stringify(json.users));
+          } catch (e) {}
+        }
+        if (json.monthly_assignments && typeof json.monthly_assignments === "object") {
+          setMonthlyAssignments(json.monthly_assignments);
+          try {
+            localStorage.setItem("qc_monthly_assignments_cache", JSON.stringify(json.monthly_assignments));
           } catch (e) {}
         }
       }
@@ -852,6 +908,89 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     [listUsers]
   );
 
+  // Danh sách các tab tháng phân công có trong dữ liệu
+  const availableAssignmentMonths = useMemo(() => {
+    return Object.keys(monthlyAssignments);
+  }, [monthlyAssignments]);
+
+  const setSelectedAssignmentMonth = useCallback((month: string) => {
+    setSelectedAssignmentMonthState(month);
+  }, []);
+
+  // Thống kê số câu và tiến độ hoàn thành theo từng QC trong tháng đang chọn
+  const qcQuestionStats = useMemo(() => {
+    if (!monthlyAssignments || !selectedAssignmentMonth) return [];
+    const tasksForMonth = monthlyAssignments[selectedAssignmentMonth] || [];
+    if (tasksForMonth.length === 0) return [];
+
+    const statsMap: Record<string, {
+      totalAssignedTasks: number;
+      totalAssignedQuestions: number;
+      totalCheckedQuestions: number;
+      tasksList: MonthlyAssignmentItem[];
+    }> = {};
+
+    tasksForMonth.forEach((t) => {
+      const qc = cleanStr(t.qc_name) || "Chưa phân công";
+      if (!statsMap[qc]) {
+        statsMap[qc] = {
+          totalAssignedTasks: 0,
+          totalAssignedQuestions: 0,
+          totalCheckedQuestions: 0,
+          tasksList: [],
+        };
+      }
+
+      statsMap[qc].totalAssignedTasks += 1;
+      statsMap[qc].totalAssignedQuestions += (t.so_cau || 0);
+      if (t.qc_done) {
+        statsMap[qc].totalCheckedQuestions += (t.so_cau || 0);
+      }
+      statsMap[qc].tasksList.push(t);
+    });
+
+    const result: QCQuestionStatItem[] = Object.keys(statsMap).map((qcName) => {
+      const item = statsMap[qcName];
+      const rate = item.totalAssignedQuestions > 0
+        ? Math.round((item.totalCheckedQuestions / item.totalAssignedQuestions) * 1000) / 10
+        : 0;
+      return {
+        qcName,
+        totalAssignedTasks: item.totalAssignedTasks,
+        totalAssignedQuestions: item.totalAssignedQuestions,
+        totalCheckedQuestions: item.totalCheckedQuestions,
+        completionRate: rate,
+        tasksList: item.tasksList,
+      };
+    });
+
+    return result.sort((a, b) => b.totalAssignedQuestions - a.totalAssignedQuestions);
+  }, [monthlyAssignments, selectedAssignmentMonth]);
+
+  // Tổng toàn team theo số câu trong tháng đang chọn
+  const teamQuestionTotals = useMemo<TeamQuestionTotals>(() => {
+    let totalTasks = 0;
+    let totalAssignedQuestions = 0;
+    let totalCheckedQuestions = 0;
+
+    qcQuestionStats.forEach((qc) => {
+      totalTasks += qc.totalAssignedTasks;
+      totalAssignedQuestions += qc.totalAssignedQuestions;
+      totalCheckedQuestions += qc.totalCheckedQuestions;
+    });
+
+    const completionRate = totalAssignedQuestions > 0
+      ? Math.round((totalCheckedQuestions / totalAssignedQuestions) * 1000) / 10
+      : 0;
+
+    return {
+      totalTasks,
+      totalAssignedQuestions,
+      totalCheckedQuestions,
+      completionRate,
+    };
+  }, [qcQuestionStats]);
+
   return (
     <AppContext.Provider
       value={{
@@ -879,6 +1018,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         editingTask,
         isCreateModalOpen,
         impersonatedRole,
+        monthlyAssignments,
+        availableAssignmentMonths,
+        selectedAssignmentMonth,
+        setSelectedAssignmentMonth,
+        qcQuestionStats,
+        teamQuestionTotals,
+        adminActiveTab,
+        setAdminActiveTab,
         setImpersonatedRole,
         setEditingTask,
         setIsCreateModalOpen,

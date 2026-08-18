@@ -16,6 +16,8 @@ import { AdminDashboard } from "@/components/AdminDashboard";
 import { QCDashboard } from "@/components/QCDashboard";
 import { TaskModal } from "@/components/TaskModal";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
+import { AssignmentDashboard } from "@/components/AssignmentDashboard";
+import { FileCheck, Layers } from "lucide-react";
 
 export default function HomePage() {
   const {
@@ -28,6 +30,8 @@ export default function HomePage() {
     themeAccent,
     theme,
     toggleTheme,
+    adminActiveTab,
+    setAdminActiveTab,
   } = useApp();
   const [isMounted, setIsMounted] = useState<boolean>(false);
   const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
@@ -294,20 +298,58 @@ export default function HomePage() {
 
         {/* Cột phải: Content chính mở rộng tràn viền linh hoạt */}
         <main className="flex-1 flex flex-col gap-4 sm:gap-5 lg:gap-6 min-w-0 w-full max-w-full overflow-hidden" aria-label="Nội dung chính">
-          {/* Admin Dashboard: Thống kê & Biểu đồ toàn diện (Hiện mượt mà trên cả Mobile, Tablet, Desktop) */}
+          {/* Thanh Chuyển Đổi Tab Chế Độ Dành Riêng Cho Admin (2 trong 1) */}
           {effectiveRole === "ADMIN" && (
-            <AdminDashboard />
-          )}
+            <div className="bg-white dark:bg-slate-900 p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-1.5 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setAdminActiveTab("TASKS")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 px-3 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all ${
+                  adminActiveTab === "TASKS"
+                    ? "bg-slate-900 dark:bg-blue-600 text-white shadow-md"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                <FileCheck className="w-4 h-4" />
+                <span>Quản Lý Bắt Lỗi & Phản Hồi</span>
+              </button>
 
-          {/* QC Dashboard: Thống kê cá nhân và bảng đề đã check (Hiện trên Desktop, trên mobile xem qua menu trượt) */}
-          {effectiveRole === "QC" && (
-            <div className="hidden lg:block">
-              <QCDashboard onOpenDetails={(task) => setEditingTask(task)} />
+              <button
+                type="button"
+                onClick={() => setAdminActiveTab("ASSIGNMENT_REPORT")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 px-3 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all ${
+                  adminActiveTab === "ASSIGNMENT_REPORT"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>Báo Cáo Tổng Số Câu QC</span>
+              </button>
             </div>
           )}
 
-          {/* Task Board: Danh sách đề và các Tabs (Trên mobile xuất hiện ngay đầu tiên cực kỳ trực quan) */}
-          <TaskBoard onOpenDetails={(task) => setEditingTask(task)} />
+          {/* CHẾ ĐỘ 1: BÁO CÁO TỔNG SỐ CÂU THEO THÁNG DÀNH RIÊNG CHO ADMIN */}
+          {effectiveRole === "ADMIN" && adminActiveTab === "ASSIGNMENT_REPORT" ? (
+            <AssignmentDashboard />
+          ) : (
+            <>
+              {/* Admin Dashboard: Thống kê & Biểu đồ toàn diện (Hiện mượt mà trên cả Mobile, Tablet, Desktop) */}
+              {effectiveRole === "ADMIN" && (
+                <AdminDashboard />
+              )}
+
+              {/* QC Dashboard: Thống kê cá nhân và bảng đề đã check (Hiện trên Desktop, trên mobile xem qua menu trượt) */}
+              {effectiveRole === "QC" && (
+                <div className="hidden lg:block">
+                  <QCDashboard onOpenDetails={(task) => setEditingTask(task)} />
+                </div>
+              )}
+
+              {/* Task Board: Danh sách đề và các Tabs (Trên mobile xuất hiện ngay đầu tiên cực kỳ trực quan) */}
+              <TaskBoard onOpenDetails={(task) => setEditingTask(task)} />
+            </>
+          )}
         </main>
       </div>
 

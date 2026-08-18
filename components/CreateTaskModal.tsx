@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { CreateTaskPayload } from "@/types";
 import { useApp } from "@/context/AppContext";
 import {
@@ -79,30 +79,37 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   const workerEmail = workerObj?.email || "";
 
-  // Khởi tạo các giá trị mặc định khi mở modal
+  const hasOpenedRef = useRef<boolean>(false);
+
+  // Khởi tạo các giá trị mặc định khi mở modal (Chỉ chạy 1 lần khi mở, không bao giờ reset khi đang gõ)
   useEffect(() => {
     if (isOpen) {
-      const defaultMonth =
-        selectedMonth && selectedMonth !== "ALL"
-          ? selectedMonth
-          : availableMonths[0] || `${new Date().getMonth() + 1}/${new Date().getFullYear()}`;
-      setIdThang(defaultMonth);
-      setTaskTitle("");
-      setSoCau("");
-      setWorkerName("");
-      setQcName(currentUser?.role === "QC" || currentUser?.role === "ADMIN" ? currentUser.name : "");
-      setQcDone("");
-      setLinkSp("");
-      setMinhChung("");
-      setLoi1("");
-      setLoi2("");
-      setLoi3("");
-      setNote("");
-      setSendEmail(true);
-      setErrorMessage(null);
-      setSuccessMessage(null);
+      if (!hasOpenedRef.current) {
+        hasOpenedRef.current = true;
+        const defaultMonth =
+          selectedMonth && selectedMonth !== "ALL"
+            ? selectedMonth
+            : availableMonths[0] || `${new Date().getMonth() + 1}/${new Date().getFullYear()}`;
+        setIdThang(defaultMonth);
+        setTaskTitle("");
+        setSoCau("");
+        setWorkerName("");
+        setQcName(currentUser?.role === "QC" || currentUser?.role === "ADMIN" ? currentUser.name : "");
+        setQcDone("");
+        setLinkSp("");
+        setMinhChung("");
+        setLoi1("");
+        setLoi2("");
+        setLoi3("");
+        setNote("");
+        setSendEmail(true);
+        setErrorMessage(null);
+        setSuccessMessage(null);
+      }
+    } else {
+      hasOpenedRef.current = false;
     }
-  }, [isOpen, selectedMonth, availableMonths, currentUser]);
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
