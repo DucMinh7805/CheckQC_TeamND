@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * ============================================================================
+ * FILE: components/NotificationCenter.tsx
+ * MỤC ĐÍCH: Trung tâm thông báo đẩy & Quản lý chuông báo lỗi hệ thống
+ * CHỨC NĂNG:
+ *   1. Quét dữ liệu và phát hiện biến động theo thời gian thực (Lỗi mới, Phản hồi mới)
+ *   2. Phát âm thanh chuông báo và kích hoạt Push Notification trên điện thoại / PC
+ *   3. Hộp thư thông báo (Đã đọc / Chưa đọc / Lọc theo loại lỗi)
+ *   4. Bấm vào thông báo để mở trực tiếp đề bài tương ứng
+ * ============================================================================
+ */
+
 import React, { useState, useMemo, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { AppNotification, TaskItem } from "@/types";

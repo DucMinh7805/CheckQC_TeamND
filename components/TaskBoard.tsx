@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * ============================================================================
+ * FILE: components/TaskBoard.tsx
+ * MỤC ĐÍCH: Bảng hiển thị danh sách các thẻ nhiệm vụ đề bài (Task Cards)
+ * CHỨC NĂNG:
+ *   1. Bộ lọc 5 Tab trạng thái: Tất Cả, Đang Lỗi, QC Sai, Chờ Duyệt, Đã Hoàn Thành
+ *   2. Ô tìm kiếm nhanh theo Tên đề bài hoặc Người làm
+ *   3. Nút xuất dữ liệu đề bài ra file Excel CSV
+ *   4. Render lưới thẻ nhiệm vụ (TaskCard) tương ứng với vai trò người dùng
+ * ============================================================================
+ */
+
 import React, { useState, useMemo, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { TabFilterType, TaskItem } from "@/types";

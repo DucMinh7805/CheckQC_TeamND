@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * ============================================================================
+ * FILE: context/AppContext.tsx
+ * MỤC ĐÍCH: Kho dữ liệu trạng thái toàn cục (Global Context Provider) của toàn App
+ * CHỨC NĂNG:
+ *   1. Quản lý trạng thái đăng nhập, người dùng hiện tại (currentUser) & vai trò giả lập (impersonatedRole)
+ *   2. Tải và đồng bộ dữ liệu từ Google Sheets qua API (appData, listUsers, monthlyAssignments)
+ *   3. Bộ tính toán thống kê tự động: stats, workerStats, qcQuestionStats, teamQuestionTotals
+ *   4. Các hàm thao tác API: createTask, updateTask, updateStatus, updateQcDone, syncDataSilently
+ *   5. Quản lý giao diện, bộ lọc tháng, lọc người làm, lọc QC và thông báo hệ thống
+ * ============================================================================
+ */
+
 import React, {
   createContext,
   useContext,

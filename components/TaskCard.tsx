@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * ============================================================================
+ * FILE: components/TaskCard.tsx
+ * MỤC ĐÍCH: Thẻ hiển thị tóm tắt từng đề bài (Task Card)
+ * CHỨC NĂNG:
+ *   1. Hiển thị Trạng thái (Pass, Lỗi, Chờ QC check...), Số câu, Ai làm, QC
+ *   2. Cảnh báo Lỗi lần 1, 2, 3 và Tồn > 3 ngày
+ *   3. Mở nhanh Link đề và Link sản phẩm
+ *   4. Nhấn vào thẻ để mở Modal xem / chỉnh sửa chi tiết (TaskModal)
+ * ============================================================================
+ */
+
 import React from "react";
 import { TaskItem } from "@/types";
 import { useApp } from "@/context/AppContext";

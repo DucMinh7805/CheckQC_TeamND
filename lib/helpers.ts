@@ -344,3 +344,42 @@ export const exportTasksToCSV = (tasks: TaskItem[], selectedMonth: string) => {
   link.click();
   document.body.removeChild(link);
 };
+
+// Xuất file CSV báo cáo số câu QC
+export const exportQcQuestionStatsToCSV = (
+  qcQuestionStats: any[],
+  teamTotals: any,
+  monthName: string
+) => {
+  if (!qcQuestionStats || qcQuestionStats.length === 0) return;
+
+  let csv = "\uFEFF";
+  csv += `BÁO CÁO TIẾN ĐỘ & SỐ CÂU QC - ${monthName}\r\n\r\n`;
+  csv += "Nhân sự QC,Tổng đề giao,Tổng số câu giao,Số câu đã check,Tỷ lệ hoàn thành (%)\r\n";
+
+  qcQuestionStats.forEach((q) => {
+    csv += `"${q.qcName}",${q.totalAssignedTasks},${q.totalAssignedQuestions},${q.totalCheckedQuestions},"${q.completionRate}%"\r\n`;
+  });
+
+  if (teamTotals) {
+    csv += `\r\n"TỔNG TOÀN TEAM",${teamTotals.totalTasks},${teamTotals.totalAssignedQuestions},${teamTotals.totalCheckedQuestions},"${teamTotals.completionRate}%"\r\n\r\n`;
+  }
+
+  csv += "CHI TIẾT ĐỀ BÀI TỪNG QC\r\n";
+  csv += "QC,Tên đề,Số câu thực,Người làm,Trạng thái QC,Link đề,Link SP,Ghi chú\r\n";
+
+  qcQuestionStats.forEach((q) => {
+    (q.tasksList || []).forEach((t: any) => {
+      const statusText = t.qc_done ? "Đã check" : "Chưa check";
+      csv += `"${q.qcName}","${cleanStr(t.task_title).replace(/"/g, '""')}",${t.so_cau},"${cleanStr(t.worker_name)}","${statusText}","${t.link_de || ""}","${t.link_sp || ""}","${cleanStr(t.note).replace(/"/g, '""')}"\r\n`;
+    });
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `BaoCao_SoCau_QC_${monthName.replace(/[\s\.\/]/g, "_")}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};

@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * ============================================================================
+ * FILE: components/Sidebar.tsx
+ * MỤC ĐÍCH: Thanh điều khiển bên trái (Cố định Sticky trên PC, cuộn linh hoạt trên Mobile)
+ * CHỨC NĂNG:
+ *   1. Hiển thị thông tin người dùng đang đăng nhập & Nút Đăng xuất
+ *   2. Chuyển đổi vai trò giả lập (Dành cho Admin test quyền: WORKER, QC, ADMIN)
+ *   3. Bộ lọc thời gian (Chọn tháng), Bộ lọc nhân sự (Ai làm, QC)
+ *   4. Chuyển đổi giao diện Sáng / Tối (Theme Light / Dark) & Nút Đồng bộ dữ liệu mới nhất
+ * ============================================================================
+ */
+
 import React from "react";
 import { useApp } from "@/context/AppContext";
 import { Badge } from "@/components/ui/badge";

@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * ============================================================================
+ * FILE: components/TaskModal.tsx
+ * MỤC ĐÍCH: Cửa sổ chi tiết và chỉnh sửa / phản hồi lỗi cho từng đề bài
+ * CHỨC NĂNG:
+ *   1. Xem toàn bộ thông tin đề bài (Tên, Số câu, Ai làm, QC, Link đề, Link SP)
+ *   2. Nhập và cập nhật chi tiết Lỗi lần 1, 2, 3 (Dành cho QC)
+ *   3. Phản hồi của Nội Dung và Phản hồi của QC kèm Minh chứng
+ *   4. Phân quyền chặt chẽ theo vai trò (WORKER, QC, ADMIN) và cập nhật tức thì lên Google Sheets
+ * ============================================================================
+ */
+
 import React, { useState, useEffect, useRef } from "react";
 import { TaskItem } from "@/types";
 import { useApp } from "@/context/AppContext";

@@ -1,5 +1,16 @@
 "use client";
 
+/**
+ * ============================================================================
+ * FILE: components/QCDashboard.tsx
+ * MỤC ĐÍCH: Bảng điều khiển dành riêng cho nhân sự QC khi đăng nhập
+ * CHỨC NĂNG:
+ *   1. Thống kê số lượng đề bài được phân công cho cá nhân QC
+ *   2. Theo dõi tiến độ đề Đã Pass, Đang Báo Lỗi và Chưa Kiểm Tra
+ *   3. Danh sách đề bài được phân công kèm nút thao tác nhanh
+ * ============================================================================
+ */
+
 import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { TaskItem } from "@/types";

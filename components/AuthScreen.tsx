@@ -1,5 +1,16 @@
 "use client";
 
+/**
+ * ============================================================================
+ * FILE: components/AuthScreen.tsx
+ * MỤC ĐÍCH: Màn hình Đăng nhập / Chọn danh tính nhân sự
+ * CHỨC NĂNG:
+ *   1. Lấy danh sách nhân sự từ tab Users của Google Sheets
+ *   2. Hỗ trợ đăng nhập nhanh bằng cách chọn tên và nhập mã PIN bảo mật
+ *   3. Ghi nhớ phiên đăng nhập (Session) trên trình duyệt
+ * ============================================================================
+ */
+
 import React, { useState, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

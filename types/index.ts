@@ -145,6 +145,7 @@ export interface MonthlyAssignmentItem {
   link_sp?: string;
   link_de?: string;
   note?: string;
+  leader_check?: string;
 }
 
 export type MonthlyAssignmentsMap = Record<string, MonthlyAssignmentItem[]>;

@@ -1,5 +1,19 @@
 "use client";
 
+/**
+ * ============================================================================
+ * FILE: app/page.tsx
+ * MỤC ĐÍCH: Trang chủ chính của Ứng dụng Quản Lý QC & Tiến Độ Nội Dung
+ * CHỨC NĂNG:
+ *   1. Quản lý trạng thái xác thực (Nếu chưa login -> hiển thị AuthScreen)
+ *   2. Layout 2 cột chuẩn: Cột trái (Sidebar cố định), Cột phải (Vùng nội dung chính)
+ *   3. Điều hướng 2 Tab chính:
+ *      - Tab 1: "Quản Lý Bắt Lỗi & Phản Hồi" (AdminDashboard / QCDashboard + TaskBoard)
+ *      - Tab 2: "Báo Cáo Tổng Số Câu QC" (AssignmentDashboard)
+ *   4. Quản lý các Modal toàn cục (TaskModal, CreateTaskModal, NotificationCenter)
+ * ============================================================================
+ */
+
 import React, { useState, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { AuthScreen } from "@/components/AuthScreen";
@@ -125,7 +139,7 @@ export default function HomePage() {
   else if (themeAccent === "amber") accentBorderClass = "accent-amber";
 
   return (
-    <div className={`min-h-screen w-full max-w-full overflow-x-hidden bg-[#f4f7fb] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200 relative ${accentBorderClass}`}>
+    <div className={`min-h-screen w-full max-w-full overflow-x-clip bg-[#f4f7fb] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200 relative ${accentBorderClass}`}>
       {/* THANH TOP BAR CỐ ĐỊNH RIÊNG CHO ĐIỆN THOẠI (Mobile Sticky Navigation) */}
       <header className="lg:hidden sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 py-2.5 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-2 min-w-0">
@@ -291,8 +305,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Main Container */}
-      <div className="p-3 sm:p-5 lg:p-6 flex flex-col lg:flex-row gap-4 sm:gap-5 lg:gap-6 w-full max-w-full min-w-0">
+      {/* Main Container: Thêm items-start để thanh Sidebar bên trái luôn dính cố định (Sticky) khi cuộn trang trên Desktop */}
+      <div className="p-3 sm:p-5 lg:p-6 flex flex-col lg:flex-row items-start gap-4 sm:gap-5 lg:gap-6 w-full max-w-full min-w-0">
         {/* Cột trái: Sidebar điều khiển & bộ lọc (Chỉ hiển thị cố định trên Desktop lg+) */}
         <Sidebar />
 
