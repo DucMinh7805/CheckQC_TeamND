@@ -71,7 +71,16 @@ export const KpiTable: React.FC = () => {
     return Object.keys(monthlyAssignments || {});
   }, [monthlyAssignments]);
 
-  const [selectedKpiMonth, setSelectedKpiMonth] = useState<string>("ALL");
+  const [selectedKpiMonth, setSelectedKpiMonth] = useState<string>(
+    availableMonths[0] || "ALL"
+  );
+
+  useEffect(() => {
+    if (selectedKpiMonth === "ALL" && availableMonths.length > 0) {
+      setSelectedKpiMonth(availableMonths[0]);
+    }
+  }, [availableMonths]);
+
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -180,8 +189,11 @@ export const KpiTable: React.FC = () => {
       // Logic phân loại 7 cột chuẩn xác
       const isUrgent =
         /t[ốổo]i\s*kh[ẩa]n/i.test(leaderCheck) ||
-        /t[ốổo]i\s*kh[ẩa]n/i.test(note) ||
-        /t[ốổo]i\s*kh[ẩa]n/i.test(title);
+        /t[ốổo]i\s*kh[ẩa]n/i.test(note);
+
+      const isAiKhan =
+        /ai\s*kh[ẩa]n/i.test(note) ||
+        /ai\s*kh[ẩa]n/i.test(leaderCheck);
 
       const isCopy =
         leaderCheck.includes("copy") ||
@@ -191,9 +203,8 @@ export const KpiTable: React.FC = () => {
       const isThucHanh =
         title.includes("thực hành") ||
         title.includes("thuc hanh") ||
-        title.includes("th") ||
-        leaderCheck.includes("th") ||
-        note.includes("th");
+        leaderCheck.includes("thực hành") ||
+        note.includes("thực hành");
 
       const isAi =
         leaderCheck.includes("ai") ||
@@ -208,21 +219,40 @@ export const KpiTable: React.FC = () => {
         title.includes("giải thích") ||
         title.includes("gt");
 
-      if (isUrgent) {
-        dataMap[workerName].deToiKhan += soCau;
-      } else if (isGiaiThich && isCopy) {
-        dataMap[workerName].copyGt += soCau;
-      } else if (isGiaiThich && !isCopy) {
-        dataMap[workerName].goGt += soCau;
-      } else if (isAi && isUrgent) {
-        dataMap[workerName].mcqGo += soCau;
-      } else if (isAi) {
-        dataMap[workerName].aiCreate += soCau;
-      } else if (isThucHanh) {
-        dataMap[workerName].th += soCau;
-      } else if (isCopy) {
+      // 1. Leader ghi đè "Đề copy" -> MCQ copy (190)
+      if (leaderCheck.includes("copy")) {
         dataMap[workerName].mcqCopy += soCau;
-      } else {
+      }
+      // 2. AI Khẩn -> MCQ gõ / AI khẩn (89)
+      else if (isAiKhan) {
+        dataMap[workerName].mcqGo += soCau;
+      }
+      // 3. Đề tối khẩn -> Đề tối khẩn (244)
+      else if (isUrgent) {
+        dataMap[workerName].deToiKhan += soCau;
+      }
+      // 4. Giải thích + Copy -> CopyGT
+      else if (isGiaiThich && isCopy) {
+        dataMap[workerName].copyGt += soCau;
+      }
+      // 5. Giải thích thuần -> Gõ GT
+      else if (isGiaiThich && !isCopy) {
+        dataMap[workerName].goGt += soCau;
+      }
+      // 6. Thực hành -> TH (364)
+      else if (isThucHanh) {
+        dataMap[workerName].th += soCau;
+      }
+      // 7. Copy thông thường -> MCQ copy
+      else if (isCopy) {
+        dataMap[workerName].mcqCopy += soCau;
+      }
+      // 8. Tạo AI -> AI create (2328)
+      else if (isAi) {
+        dataMap[workerName].aiCreate += soCau;
+      }
+      // 9. Mặc định -> MCQ gõ / AI khẩn
+      else {
         dataMap[workerName].mcqGo += soCau;
       }
     });
