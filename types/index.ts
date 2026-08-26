@@ -160,3 +160,13 @@ export interface QCQuestionStatItem {
   tasksList: MonthlyAssignmentItem[];
 }
 
+export interface QcSalaryStatItem {
+  qcName: string;
+  role: string;
+  doneTasksCount: number;
+  doneQuestionsCount: number;
+  totalErrorsChecked: number;
+  tasksList: MonthlyAssignmentItem[];
+}
+
+

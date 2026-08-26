@@ -17,10 +17,11 @@ import { useApp } from "@/context/AppContext";
 import { exportQcQuestionStatsToCSV } from "@/lib/helpers";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
-import { BarChart3, Layers, Calendar, Sparkles, AlertCircle, FileSpreadsheet } from "lucide-react";
+import { BarChart3, Layers, Calendar, Sparkles, AlertCircle, FileSpreadsheet, Calculator } from "lucide-react";
 import { TeamSummaryKpiCards } from "@/components/TeamSummaryKpiCards";
 import { QcPerformanceTable } from "@/components/QcPerformanceTable";
 import { QcErrorReportModal } from "@/components/QcErrorReportModal";
+import { QcSalaryModal } from "@/components/QcSalaryModal";
 
 export const AssignmentDashboard: React.FC = () => {
   const {
@@ -34,6 +35,7 @@ export const AssignmentDashboard: React.FC = () => {
   } = useApp();
 
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState<boolean>(false);
+  const [isSalaryOpen, setIsSalaryOpen] = useState<boolean>(false);
 
   const effectiveRole = impersonatedRole || currentUser?.role;
   if (effectiveRole !== "ADMIN") return null;
@@ -84,12 +86,21 @@ export const AssignmentDashboard: React.FC = () => {
           )}
 
           <Button
+            onClick={() => setIsSalaryOpen(true)}
+            aria-label="Mở Bảng Tính Lương QC"
+            className="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm h-10 px-4 flex items-center gap-2 shadow-md transition-all active:scale-[0.98] cursor-pointer"
+          >
+            <Calculator className="w-4 h-4 text-white" />
+            <span>Tính lương QC</span>
+          </Button>
+
+          <Button
             onClick={() => setIsAnalyticsOpen(true)}
-            aria-label="Mở Báo lỗi QC"
-            className="rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs sm:text-sm h-10 px-4 flex items-center gap-2 shadow-md transition-all active:scale-[0.98]"
+            aria-label="Mở Báo lỗi ND"
+            className="rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs sm:text-sm h-10 px-4 flex items-center gap-2 shadow-md transition-all active:scale-[0.98] cursor-pointer"
           >
             <BarChart3 className="w-4 h-4 text-white" />
-            <span>Báo lỗi QC</span>
+            <span>Báo lỗi ND</span>
           </Button>
 
           <Button
@@ -125,6 +136,9 @@ export const AssignmentDashboard: React.FC = () => {
 
       {/* Modal Báo Cáo Lỗi Của QC */}
       <QcErrorReportModal open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen} />
+
+      {/* Modal Bảng Tính Lương & Lỗi QC */}
+      <QcSalaryModal open={isSalaryOpen} onOpenChange={setIsSalaryOpen} />
     </div>
   );
 };

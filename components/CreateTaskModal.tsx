@@ -81,15 +81,27 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   const hasOpenedRef = useRef<boolean>(false);
 
+  // Khóa lưu tháng riêng biệt theo từng tài khoản người dùng đăng nhập
+  const userMonthStorageKey = useMemo(() => {
+    return currentUser?.name
+      ? `qc_last_month_${cleanStr(currentUser.name).toLowerCase()}`
+      : "qc_last_custom_month";
+  }, [currentUser?.name]);
+
   // Khởi tạo các giá trị mặc định khi mở modal (Chỉ chạy 1 lần khi mở, không bao giờ reset khi đang gõ)
   useEffect(() => {
     if (isOpen) {
       if (!hasOpenedRef.current) {
         hasOpenedRef.current = true;
+        let savedMonth: string | null = null;
+        if (typeof window !== "undefined") {
+          savedMonth = localStorage.getItem(userMonthStorageKey) || localStorage.getItem("qc_last_custom_month");
+        }
         const defaultMonth =
-          selectedMonth && selectedMonth !== "ALL"
+          savedMonth ||
+          (selectedMonth && selectedMonth !== "ALL"
             ? selectedMonth
-            : availableMonths[0] || `${new Date().getMonth() + 1}/${new Date().getFullYear()}`;
+            : availableMonths[0] || `${new Date().getMonth() + 1}/${new Date().getFullYear()}`);
         setIdThang(defaultMonth);
         setTaskTitle("");
         setSoCau("");
@@ -109,7 +121,17 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     } else {
       hasOpenedRef.current = false;
     }
-  }, [isOpen]);
+  }, [isOpen, userMonthStorageKey, selectedMonth, availableMonths, currentUser]);
+
+  const handleMonthChange = (newMonth: string) => {
+    setIdThang(newMonth);
+    if (newMonth.trim()) {
+      try {
+        localStorage.setItem(userMonthStorageKey, newMonth.trim());
+        localStorage.setItem("qc_last_custom_month", newMonth.trim());
+      } catch (e) {}
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +147,13 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     setIsSubmitting(true);
     setErrorMessage(null);
     setSuccessMessage(null);
+
+    if (idThang.trim()) {
+      try {
+        localStorage.setItem(userMonthStorageKey, idThang.trim());
+        localStorage.setItem("qc_last_custom_month", idThang.trim());
+      } catch (e) {}
+    }
 
     const numericSoCau = soCau !== "" ? Math.max(0, parseInt(soCau, 10) || 0) : "";
 
@@ -201,24 +230,78 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 <span>1. Thông Tin Phân Công Bài Làm</span>
               </h3>
 
-              {/* Dòng 1: Tháng */}
-              <div className="space-y-1">
-                <label className="text-[11px] sm:text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                  <span>Tháng:</span>
-                </label>
-                <Select value={idThang} onValueChange={(val) => val && setIdThang(val)}>
-                  <SelectTrigger className="w-full bg-white dark:bg-slate-900 rounded-xl font-bold text-xs sm:text-sm h-10">
-                    <span>{idThang ? `Tháng ${idThang}` : "-- Chọn tháng --"}</span>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl max-h-56">
-                    {availableMonths.map((m) => (
-                      <SelectItem key={m} value={m} className="font-bold text-xs sm:text-sm py-2">
-                        Tháng {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Dòng 1: Tháng (Tự nhập hoặc chọn nhanh) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] sm:text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Tháng:</span>
+                  </label>
+                  <span className="text-[10px] font-semibold text-slate-500">
+                    (Có thể tự gõ tháng mới hoặc chọn nhanh bên dưới)
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      type="text"
+                      list="create-task-months"
+                      placeholder="Nhập tháng (VD: 8/2026, 9/2026...)"
+                      value={idThang}
+                      onChange={(e) => handleMonthChange(e.target.value)}
+                      aria-label="Tháng kiểm tra"
+                      className="bg-white dark:bg-slate-900 rounded-xl font-bold text-xs sm:text-sm h-10 pr-8"
+                      required
+                    />
+                    <datalist id="create-task-months">
+                      {availableMonths.map((m) => (
+                        <option key={m} value={m}>
+                          Tháng {m}
+                        </option>
+                      ))}
+                    </datalist>
+                  </div>
+
+                  {availableMonths.length > 0 && (
+                    <Select value={idThang} onValueChange={(val) => val && handleMonthChange(val)}>
+                      <SelectTrigger className="w-auto px-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs h-10 border-slate-300 dark:border-slate-700">
+                        <span>Chọn tháng</span>
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl max-h-56">
+                        {availableMonths.map((m) => (
+                          <SelectItem key={m} value={m} className="font-bold text-xs sm:text-sm py-2">
+                            Tháng {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                {/* Danh sách gợi ý tháng chọn nhanh (Pills) */}
+                {availableMonths.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className="text-[10px] font-bold text-slate-500">Gợi ý:</span>
+                    {availableMonths.map((m) => {
+                      const isSelected = idThang.trim() === m.trim();
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => handleMonthChange(m)}
+                          className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
+                            isSelected
+                              ? "bg-blue-600 text-white shadow-xs font-black scale-105"
+                              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600"
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Dòng 2: Tên bài (dài) + Số câu (kế bên) */}

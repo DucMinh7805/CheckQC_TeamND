@@ -131,13 +131,16 @@ export const formatDateTime = (dateStr: string): string => {
   return cleaned;
 };
 
-// Chuẩn hóa định dạng ID/Tháng (hỗ trợ nhập tay "8/2026", "08/2026", "Tháng 8/2026", "00:00:00 1/8/2026")
+// Chuẩn hóa định dạng ID/Tháng (hỗ trợ nhập tay "8/2026", "08/2026", "8.2026", "Tháng 8.2026", "Tháng 8/2026", "T8.2026", "00:00:00 1/8/2026")
 export const normalizeMonthStr = (str: string): string => {
   if (!str) return "";
-  let cleaned = cleanStr(str).replace(/^tháng\s*/i, "").trim();
+  let cleaned = cleanStr(str)
+    .replace(/^tháng\s*/i, "")
+    .replace(/^t\s*/i, "")
+    .trim();
   
-  // Chuẩn hóa dạng "08/2026" -> "8/2026"
-  const mMatch = cleaned.match(/^0?(\d{1,2})\/(\d{4})$/);
+  // Chuẩn hóa dạng "08/2026", "8/2026", "8.2026", "08.2026" -> "8/2026"
+  const mMatch = cleaned.match(/^0?(\d{1,2})[\.\/](\d{4})$/);
   if (mMatch) {
     const month = parseInt(mMatch[1], 10);
     const year = mMatch[2];
@@ -145,7 +148,7 @@ export const normalizeMonthStr = (str: string): string => {
   }
 
   // Trường hợp Google Sheet tự ép kiểu ngày: "00:00:00 1/8/2026" hoặc "01/08/2026 00:00:00"
-  const dmyMatch = cleaned.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  const dmyMatch = cleaned.match(/(\d{1,2})[\.\/](\d{1,2})[\.\/](\d{4})/);
   if (dmyMatch) {
     const month = parseInt(dmyMatch[2], 10);
     const year = dmyMatch[3];
@@ -153,6 +156,97 @@ export const normalizeMonthStr = (str: string): string => {
   }
 
   return cleaned;
+};
+
+// Kiểm tra đề bài có thuộc kỳ tính lương QC được chọn hay không (hỗ trợ đề tồn T8 -> T9, 8.1/2026, Note "Đề tồn T8")
+export const isTaskInQcSalaryMonth = (
+  originMonthStr: string | null | undefined,
+  noteText: string | null | undefined,
+  leaderCheckText: string | null | undefined,
+  selectedMonth: string
+): boolean => {
+  if (!selectedMonth || selectedMonth === "ALL") return true;
+
+  const targetMonthNorm = normalizeMonthStr(selectedMonth);
+  const originMonthNorm = normalizeMonthStr(originMonthStr || "");
+
+  const combinedNote = `${cleanStr(noteText)} ${cleanStr(leaderCheckText)}`.toLowerCase();
+
+  // Kiểm tra từ khóa "đề tồn" / "tồn" (ví dụ "đề tồn t8", "tồn t8", "tồn tháng 8", "đề tồn", "de ton", "tồn t11", "tồn t12")
+  const tonMatch = combinedNote.match(/(?:đề\s*)?t[ồo]n\s*(?:t|tháng\s*)?(\d{1,2}(?:\.\d{1,2})?)/i) || 
+                   (combinedNote.includes("đề tồn") || combinedNote.includes("de ton") ? true : null);
+
+  const subMonthMatch = originMonthNorm.match(/^(\d{1,2})\.1\/(\d{4})/);
+
+  if (tonMatch || subMonthMatch) {
+    let tonMonthNum = 0;
+    if (Array.isArray(tonMatch) && tonMatch[1]) {
+      tonMonthNum = parseFloat(tonMatch[1]);
+    } else if (subMonthMatch) {
+      tonMonthNum = parseInt(subMonthMatch[1], 10);
+    } else if (originMonthNorm) {
+      const m = originMonthNorm.match(/^(\d{1,2})/);
+      if (m) tonMonthNum = parseFloat(m[1]);
+    }
+
+    // Nếu xem đúng tháng gốc của đề tồn (ví dụ đang lọc T8 mà đề ghi "Đề tồn T8", hoặc lọc T11 mà đề ghi "Đề tồn T11") -> BỎ QUA không tính lương tháng gốc
+    if (tonMonthNum > 0 && (targetMonthNorm === `${tonMonthNum}/2026` || targetMonthNorm === `${tonMonthNum}/2025` || targetMonthNorm.startsWith(`${tonMonthNum}/`))) {
+      return false;
+    }
+
+    // Nếu đang lọc tháng sau (T8 -> T9, T11 -> T12, T12 -> T1) hoặc kỳ phụ (8.1, 11.1) -> TÍNH VÀO KỲ NÀY
+    const nextMonthNum = tonMonthNum === 12 ? 1 : tonMonthNum + 1;
+    if (
+      targetMonthNorm.startsWith(`${nextMonthNum}/`) ||
+      targetMonthNorm.startsWith(`${tonMonthNum}.1/`) ||
+      targetMonthNorm.includes(`${tonMonthNum}.1`)
+    ) {
+      return true;
+    }
+
+    // Nếu note có ghi đích đến cụ thể (ví dụ "tính t9", "lương t9", "tính t12", "lương t12")
+    const explicitMatch = combinedNote.match(/(?:t[íi]nh|l[ươu]ng\s*(?:qc)?|chuy[ểe]n\s*sang)?\s*t(?:háng)?\s*(\d{1,2}(?:\.\d{1,2})?)/i);
+    if (explicitMatch && explicitMatch[1]) {
+      const dest = explicitMatch[1];
+      if (targetMonthNorm.startsWith(`${dest}/`) || targetMonthNorm.includes(dest)) {
+        return true;
+      }
+    }
+  }
+
+  // Trường hợp bình thường: khớp đúng tháng
+  return (
+    originMonthNorm === targetMonthNorm ||
+    originMonthNorm.replace("/", ".") === targetMonthNorm.replace("/", ".")
+  );
+};
+
+// Bóc tách chính xác số lượng lỗi từ chuỗi mô tả lỗi (cấu trúc X/Y ví dụ "2/40", "1/40", "25/45", "1: 1/99")
+export const parseQcErrorCount = (text: string | null | undefined): number => {
+  if (!text) return 0;
+  const cleaned = cleanStr(text);
+  if (!cleaned) return 0;
+
+  const nonErrorWords = ["không", "ko", "k", "none", "0", "-", "pass", "ok", "đạt", "xong", "đã sửa", "fixed"];
+  if (nonErrorWords.includes(cleaned.toLowerCase().trim())) return 0;
+
+  // Tìm tất cả các mẫu dạng X/Y (ví dụ "2/40", "1/40", "25/45", "1: 1/99", "Lỗi lần 3: 1/33")
+  const regex = /(\d+)\s*\/\s*\d+/g;
+  let match;
+  let totalErrors = 0;
+  let foundAny = false;
+
+  while ((match = regex.exec(cleaned)) !== null) {
+    foundAny = true;
+    totalErrors += parseInt(match[1], 10);
+  }
+
+  if (foundAny) {
+    return totalErrors;
+  }
+
+  // Nếu không có dạng X/Y nhưng có text mô tả lỗi thực tế
+  return 1;
 };
 
 // Tự động nhận diện trạng thái đề dù nhập tay bất kỳ định dạng nào trên Google Sheets
@@ -383,3 +477,33 @@ export const exportQcQuestionStatsToCSV = (
   link.click();
   document.body.removeChild(link);
 };
+
+// Xuất file CSV bảng tính lương & lỗi QC
+export const exportQcSalaryStatsToCSV = (
+  qcSalaryStats: any[],
+  totals: { doneTasks: number; doneQuestions: number; totalErrors: number; grandSalary?: number },
+  monthName: string
+) => {
+  if (!qcSalaryStats || qcSalaryStats.length === 0) return;
+
+  let csv = "\uFEFF";
+  csv += `BẢNG TÍNH LƯƠNG & LỖI QC - ${monthName}\r\n\r\n`;
+  csv += "Nhân sự QC,Vai trò,Số đề đã Done,Số câu đã check (Done),Số lỗi đã check,Tổng tiền (VNĐ)\r\n";
+
+  qcSalaryStats.forEach((q) => {
+    csv += `"${q.qcName}","${q.role || "QC"}",${q.doneTasksCount || 0},${q.doneQuestionsCount || 0},${q.totalErrorsChecked || 0},${q.totalSalary || 0}\r\n`;
+  });
+
+  if (totals) {
+    csv += `\r\n"TỔNG CỘNG","-",${totals.doneTasks},${totals.doneQuestions},${totals.totalErrors},${totals.grandSalary || 0}\r\n`;
+  }
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `Bang_Tinh_Luong_Loi_QC_${monthName.replace(/[\s\.\/]/g, "_")}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
