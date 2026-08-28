@@ -208,7 +208,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:w-full max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 dark:bg-slate-900 rounded-3xl border-slate-200 dark:border-slate-800 shadow-2xl">
+      <DialogContent className="w-[calc(100%-1rem)] sm:w-[95vw] max-w-6xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 dark:bg-slate-900 rounded-3xl border-slate-200 dark:border-slate-800 shadow-2xl">
         
         {/* Header Modal */}
         <DialogHeader className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -259,13 +259,13 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
             </div>
           ) : (
             <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs sm:text-sm">
+              <div className="overflow-x-auto scrollbar-thin">
+                <table className="w-full text-left border-collapse text-xs sm:text-sm min-w-[640px] sm:min-w-full">
                   <thead>
                     <tr className="bg-slate-100/90 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-black text-[11px] sm:text-xs uppercase border-b border-slate-200 dark:border-slate-700">
-                      <th className="p-3 pl-4">Tên đề</th>
+                      <th className="p-3 pl-4 min-w-[200px]">Tên đề</th>
                       <th
-                        className={`p-3 transition-colors ${
+                        className={`p-3 min-w-[80px] transition-colors ${
                           userRole === "QC"
                             ? "bg-purple-100/90 dark:bg-purple-950/80 text-purple-800 dark:text-purple-200 border-x border-purple-200/70 dark:border-purple-800"
                             : ""
@@ -274,7 +274,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                         <span>QC</span>
                       </th>
                       <th
-                        className={`p-3 transition-colors ${
+                        className={`p-3 min-w-[80px] transition-colors ${
                           userRole === "ND" || userRole === "WORKER"
                             ? "bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border-x border-emerald-200/70 dark:border-emerald-800"
                             : ""
@@ -282,9 +282,9 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                       >
                         <span>Ai làm</span>
                       </th>
-                      <th className="p-3">Thời gian</th>
-                      <th className="p-3">Loại cập nhật</th>
-                      <th className="p-3 pr-4 text-right">Hành động</th>
+                      <th className="p-3 min-w-[120px]">Thời gian</th>
+                      <th className="p-3 min-w-[140px]">Loại cập nhật</th>
+                      <th className="p-3 pr-4 text-right min-w-[110px]">Hành động</th>
                     </tr>
                   </thead>
 
@@ -294,16 +294,13 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                         key={idx}
                         className="hover:bg-slate-50 dark:hover:bg-slate-750 transition"
                       >
-                        <td className="p-3 pl-4 font-black text-slate-900 dark:text-white max-w-[240px]">
-                          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                        <td className="p-3.5 pl-4 font-black text-slate-900 dark:text-white max-w-md xl:max-w-xl">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
                               {item.month}
                             </span>
                             <span className="line-clamp-2">{item.title}</span>
                           </div>
-                          <span className="block text-[11px] font-normal text-rose-600 dark:text-rose-400 line-clamp-1 mt-0.5">
-                            {item.errorDetail}
-                          </span>
                         </td>
 
                         <td
