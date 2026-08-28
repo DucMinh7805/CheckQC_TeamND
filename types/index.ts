@@ -4,6 +4,7 @@ export interface User {
   name: string;
   email: string;
   pass: string;
+  password?: string;
   role: UserRole | string;
 }
 
@@ -150,7 +151,50 @@ export interface MonthlyAssignmentItem {
 
 export type MonthlyAssignmentsMap = Record<string, MonthlyAssignmentItem[]>;
 
-// Thống kê số câu và tiến độ QC theo tháng
+export interface ExtractedLinkItem {
+  title: string;
+  url: string;
+  text?: string;
+  raw?: string;
+}
+
+export interface TabCounts {
+  ALL: number;
+  PENDING: number;
+  ERROR: number;
+  WRONG: number;
+  PASS: number;
+}
+
+export interface DashboardStats {
+  total: number;
+  pass: number;
+  error: number;
+  wrong: number;
+  pending: number;
+  totalQuestions: number;
+  totalLoi1: number;
+  totalLoi2: number;
+  totalLoi3: number;
+  multiErrorCount: number;
+  pending3DaysCount: number;
+}
+
+export interface QcPersonalStats {
+  totalTasks: number;
+  totalQuestions: number;
+  totalErrorsFound: number;
+  totalPassed: number;
+  tasksList: TaskItem[];
+}
+
+export interface TeamQuestionTotals {
+  totalTasks: number;
+  totalAssignedQuestions: number;
+  totalCheckedQuestions: number;
+  completionRate: number;
+}
+
 export interface QCQuestionStatItem {
   qcName: string;
   totalAssignedTasks: number;
@@ -158,6 +202,11 @@ export interface QCQuestionStatItem {
   totalCheckedQuestions: number;
   completionRate: number;
   tasksList: MonthlyAssignmentItem[];
+  checkedTasks?: number;
+  checkedQuestions?: number;
+  pendingTasks?: number;
+  pendingQuestions?: number;
+  progressPercentage?: number;
 }
 
 export interface QcSalaryStatItem {

@@ -16,6 +16,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { TabFilterType, TaskItem } from "@/types";
 import { TaskCard } from "./TaskCard";
+import { PersonalKpiBanner } from "./PersonalKpiBanner";
 import { Loader2, FolderCheck, Search, X, FileSpreadsheet, PlusCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,10 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ onOpenDetails }) => {
   return (
     <div className="flex-1 flex flex-col gap-4 min-w-0 w-full animate-in fade-in duration-300">
       <h2 className="sr-only">Danh sách đề bài và bộ lọc trạng thái</h2>
+
+      {/* Thẻ Thống Kê Số Câu Cá Nhân (ND & QC) */}
+      <PersonalKpiBanner />
+
       {/* Top Bar: Tabs, Quick Search & Nút Nhập Liệu Đề Mới */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 transition-all">
         {/* Tab Filters - Vuốt ngang mượt mà trên mobile, ẩn triệt để thanh cuộn */}

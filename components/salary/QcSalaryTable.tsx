@@ -56,10 +56,10 @@ export const QcSalaryTable: React.FC<QcSalaryTableProps> = ({
                 </th>
                 <th
                   onClick={() => onSort("doneTasksCount")}
-                  className="p-3.5 text-center border-r border-blue-200/80 dark:border-blue-800/80 min-w-[100px] cursor-pointer select-none hover:bg-blue-200/60 transition"
+                  className="p-3.5 text-center border-r border-blue-200/80 dark:border-blue-800/80 min-w-[110px] cursor-pointer select-none hover:bg-blue-200/60 transition"
                 >
                   <div className="flex items-center justify-center">
-                    <span>Số đề Done</span>
+                    <span>Số đề đã check</span>
                     {renderSortIcon("doneTasksCount")}
                   </div>
                 </th>
@@ -193,7 +193,7 @@ export const QcSalaryTable: React.FC<QcSalaryTableProps> = ({
       <div className="bg-blue-50/60 dark:bg-blue-950/30 p-3 rounded-xl border border-blue-200/60 dark:border-blue-900/60 text-[11px] text-blue-800 dark:text-blue-300 font-semibold flex items-center gap-2">
         <Coins className="w-4 h-4 text-blue-600 flex-shrink-0" />
         <span>
-          <strong>Công thức tính lương QC:</strong> Tổng tiền = (Số câu đã Done × Đơn giá câu) + (Số lỗi đã check × Đơn giá lỗi).
+          <strong>Công thức tính lương QC:</strong> Tổng tiền = (Số câu đã check × Đơn giá câu) + (Số lỗi đã check × Đơn giá lỗi). Hệ thống tự động gom từ cả Sheet ND và Sheet QC (khử trùng 1 lần/1 đề).
         </span>
       </div>
     </div>

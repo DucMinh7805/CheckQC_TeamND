@@ -27,11 +27,11 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 
 import { AdminDashboard } from "@/components/AdminDashboard";
-import { QCDashboard } from "@/components/QCDashboard";
 import { TaskModal } from "@/components/TaskModal";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { AssignmentDashboard } from "@/components/AssignmentDashboard";
-import { FileCheck, Layers } from "lucide-react";
+import { NotificationModal } from "@/components/NotificationModal";
+import { FileCheck, Layers, Bell } from "lucide-react";
 
 export default function HomePage() {
   const {
@@ -51,6 +51,18 @@ export default function HomePage() {
   const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
   const [mobileTab, setMobileTab] = useState<"FILTER" | "DASHBOARD">("FILTER");
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
+
+  // Tự động mở Modal Thông Báo & Nhắc Việc 1 lần khi vừa vào Web
+  useEffect(() => {
+    if (currentUser?.name) {
+      const hasShown = sessionStorage.getItem(`qc_welcome_modal_${currentUser.name}`);
+      if (!hasShown) {
+        setIsNotificationModalOpen(true);
+        sessionStorage.setItem(`qc_welcome_modal_${currentUser.name}`, "true");
+      }
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -117,7 +129,7 @@ export default function HomePage() {
 
   const effectiveRole = impersonatedRole || currentUser.role;
   const canCreateTask = effectiveRole === "QC" || effectiveRole === "ADMIN";
-  const hasDashboard = effectiveRole === "ADMIN" || effectiveRole === "QC";
+  const hasDashboard = effectiveRole === "ADMIN";
 
   let roleLabel = "Nội Dung";
   let roleBadgeClass = "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800";
@@ -197,6 +209,19 @@ export default function HomePage() {
               <span>+ Đề</span>
             </Button>
           )}
+
+          {/* Nút Mở Trung Tâm Nhắc Việc & Thông Báo */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsNotificationModalOpen(true)}
+            title="Trung tâm Nhắc Việc & Thông Báo"
+            aria-label="Mở Trung tâm Nhắc Việc & Thông Báo"
+            className="rounded-2xl border-rose-200 dark:border-rose-800 bg-rose-50/80 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-black text-xs h-9 px-2.5 sm:px-3 flex items-center gap-1.5 shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/60 transition cursor-pointer active:scale-95 flex-shrink-0"
+          >
+            <Bell className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 animate-bounce" />
+            <span className="hidden sm:inline">Nhắc việc</span>
+          </Button>
 
           {/* Chuông Thông Báo In-App */}
           <NotificationCenter />
@@ -290,14 +315,6 @@ export default function HomePage() {
               ) : (
                 <div className="p-3 space-y-4">
                   {effectiveRole === "ADMIN" && <AdminDashboard />}
-                  {effectiveRole === "QC" && (
-                    <QCDashboard
-                      onOpenDetails={(task) => {
-                        setIsMobileDrawerOpen(false);
-                        setEditingTask(task);
-                      }}
-                    />
-                  )}
                 </div>
               )}
             </div>
@@ -353,13 +370,6 @@ export default function HomePage() {
                 <AdminDashboard />
               )}
 
-              {/* QC Dashboard: Thống kê cá nhân và bảng đề đã check (Hiện trên Desktop, trên mobile xem qua menu trượt) */}
-              {effectiveRole === "QC" && (
-                <div className="hidden lg:block">
-                  <QCDashboard onOpenDetails={(task) => setEditingTask(task)} />
-                </div>
-              )}
-
               {/* Task Board: Danh sách đề và các Tabs (Trên mobile xuất hiện ngay đầu tiên cực kỳ trực quan) */}
               <TaskBoard onOpenDetails={(task) => setEditingTask(task)} />
             </>
@@ -378,6 +388,12 @@ export default function HomePage() {
       <CreateTaskModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+      />
+
+      {/* Modal Trung Tâm Nhắc Việc & Thông Báo Chào Mừng */}
+      <NotificationModal
+        open={isNotificationModalOpen}
+        onOpenChange={setIsNotificationModalOpen}
       />
 
       {/* Banner thông báo nổi phong cách Zalo / Facebook */}

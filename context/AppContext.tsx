@@ -4,12 +4,6 @@
  * ============================================================================
  * FILE: context/AppContext.tsx
  * MỤC ĐÍCH: Kho dữ liệu trạng thái toàn cục (Global Context Provider) của toàn App
- * CHỨC NĂNG:
- *   1. Quản lý trạng thái đăng nhập, người dùng hiện tại (currentUser) & vai trò giả lập (impersonatedRole)
- *   2. Tải và đồng bộ dữ liệu từ Google Sheets qua API (appData, listUsers, monthlyAssignments)
- *   3. Bộ tính toán thống kê tự động: stats, workerStats, qcQuestionStats, teamQuestionTotals
- *   4. Các hàm thao tác API: createTask, updateTask, updateStatus, updateQcDone, syncDataSilently
- *   5. Quản lý giao diện, bộ lọc tháng, lọc người làm, lọc QC và thông báo hệ thống
  * ============================================================================
  */
 
@@ -36,6 +30,10 @@ import {
   MonthlyAssignmentItem,
   MonthlyAssignmentsMap,
   QCQuestionStatItem,
+  TabCounts,
+  DashboardStats,
+  QcPersonalStats,
+  TeamQuestionTotals,
 } from "@/types";
 import {
   cleanStr,
@@ -46,48 +44,12 @@ import {
   sortMonthsChronological,
   normalizeMonthStr,
 } from "@/lib/helpers";
-
-const PRIMARY_API = "/api/qc";
-const FALLBACK_DIRECT_API =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://script.google.com/macros/s/AKfycbyNT2uE0TqPZ0UTptU6IkFLrDkC2BVtEKIYZk59MfTgdYyHFQ_-mc-dcD_FS9PB5UU0zg/exec";
-
-interface StatsData {
-  total: number;
-  pass: number;
-  error: number;
-  wrong: number;
-  pending: number;
-  totalQuestions: number;
-  totalLoi1: number;
-  totalLoi2: number;
-  totalLoi3: number;
-  multiErrorCount: number;
-  pending3DaysCount: number;
-}
-
-interface QCPersonalStats {
-  totalTasks: number;
-  totalQuestions: number;
-  totalErrorsFound: number;
-  totalPassed: number;
-  tasksList: TaskItem[];
-}
-
-interface TabCounts {
-  ALL: number;
-  PENDING: number;
-  ERROR: number;
-  WRONG: number;
-  PASS: number;
-}
-
-export interface TeamQuestionTotals {
-  totalTasks: number;
-  totalAssignedQuestions: number;
-  totalCheckedQuestions: number;
-  completionRate: number;
-}
+import { fetchAppData, postAppData } from "@/lib/api";
+import {
+  calculateTabCounts,
+  calculateDashboardAndTeamStats,
+  calculateQcPersonalStats,
+} from "@/lib/stats";
 
 interface AppContextType {
   currentUser: User | null;
@@ -107,26 +69,28 @@ interface AppContextType {
   availableQCs: string[];
   filteredTasks: TaskItem[];
   tabCounts: TabCounts;
-  stats: StatsData;
+  stats: DashboardStats;
   workerStats: WorkerStatItem[];
   qcTeamStats: QCStatItem[];
-  qcPersonalStats: QCPersonalStats;
+  qcPersonalStats: QcPersonalStats;
   editingTask: TaskItem | null;
   isCreateModalOpen: boolean;
-  impersonatedRole: string | null;
-  monthlyAssignments: MonthlyAssignmentsMap;
+  impersonatedRole: "ADMIN" | "QC" | "WORKER" | null;
+  monthlyAssignments: MonthlyAssignmentsMap | null;
   availableAssignmentMonths: string[];
   selectedAssignmentMonth: string;
   setSelectedAssignmentMonth: (month: string) => void;
   qcQuestionStats: QCQuestionStatItem[];
   teamQuestionTotals: TeamQuestionTotals;
-  adminActiveTab: 'TASKS' | 'ASSIGNMENT_REPORT';
-  setAdminActiveTab: (tab: 'TASKS' | 'ASSIGNMENT_REPORT') => void;
-  setImpersonatedRole: (role: string | null) => void;
+  adminActiveTab: "TASKS" | "ASSIGNMENT_REPORT";
+  appConfig: Record<string, any> | null;
+  saveConfigToServer: (key: string, value: any) => Promise<boolean>;
+  setAdminActiveTab: (tab: "TASKS" | "ASSIGNMENT_REPORT") => void;
+  setImpersonatedRole: (role: "ADMIN" | "QC" | "WORKER" | null) => void;
   setEditingTask: (task: TaskItem | null) => void;
-  setIsCreateModalOpen: (open: boolean) => void;
-  fetchUsersForLogin: () => Promise<void>;
-  login: (name: string, pass: string) => { success: boolean; message?: string };
+  setIsCreateModalOpen: (isOpen: boolean) => void;
+  fetchUsersForLogin: () => Promise<User[]>;
+  login: (name: string, pass: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   loadData: () => Promise<void>;
   setSelectedMonth: (month: string) => void;
@@ -138,136 +102,63 @@ interface AppContextType {
   createNewTask: (payload: CreateTaskPayload) => Promise<{ success: boolean; message?: string }>;
   saveTaskDetails: (payload: SaveTaskPayload) => Promise<{ success: boolean; message?: string }>;
   updateTaskStatus: (payload: UpdateStatusPayload) => Promise<{ success: boolean; message?: string }>;
-  sendNotificationEmail: (task: TaskItem, customMessage?: string) => Promise<{ success: boolean; message?: string }>;
+  updateTaskQcDone: (rowIndex: number, isDone: boolean) => Promise<{ success: boolean; message?: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const ACCENT_COLOR_MAP: Record<
-  ThemeAccent,
-  {
-    color: string;
-    glow: string;
-    glowDark: string;
-    light: string;
-    darkBg: string;
-    border: string;
-    neonDark: string;
-  }
-> = {
-  blue: {
-    color: "#3b82f6",
-    glow: "rgba(59, 130, 246, 0.25)",
-    glowDark: "rgba(96, 165, 250, 0.45)",
-    light: "rgba(59, 130, 246, 0.08)",
-    darkBg: "rgba(30, 58, 138, 0.35)",
-    border: "#93c5fd",
-    neonDark: "#60a5fa",
-  },
-  indigo: {
-    color: "#6366f1",
-    glow: "rgba(99, 102, 241, 0.25)",
-    glowDark: "rgba(129, 140, 248, 0.45)",
-    light: "rgba(99, 102, 241, 0.08)",
-    darkBg: "rgba(49, 46, 129, 0.35)",
-    border: "#a5b4fc",
-    neonDark: "#818cf8",
-  },
-  purple: {
-    color: "#a855f7",
-    glow: "rgba(168, 85, 247, 0.25)",
-    glowDark: "rgba(192, 132, 252, 0.45)",
-    light: "rgba(168, 85, 247, 0.08)",
-    darkBg: "rgba(88, 28, 135, 0.35)",
-    border: "#d8b4fe",
-    neonDark: "#c084fc",
-  },
-  emerald: {
-    color: "#10b981",
-    glow: "rgba(16, 185, 129, 0.25)",
-    glowDark: "rgba(52, 211, 153, 0.45)",
-    light: "rgba(16, 185, 129, 0.08)",
-    darkBg: "rgba(6, 78, 59, 0.35)",
-    border: "#6ee7b7",
-    neonDark: "#34d399",
-  },
-  rose: {
-    color: "#f43f5e",
-    glow: "rgba(244, 63, 94, 0.25)",
-    glowDark: "rgba(251, 113, 133, 0.45)",
-    light: "rgba(244, 63, 94, 0.08)",
-    darkBg: "rgba(136, 19, 55, 0.35)",
-    border: "#fda4af",
-    neonDark: "#fb7185",
-  },
-  amber: {
-    color: "#f59e0b",
-    glow: "rgba(245, 158, 11, 0.25)",
-    glowDark: "rgba(251, 191, 36, 0.45)",
-    light: "rgba(245, 158, 11, 0.08)",
-    darkBg: "rgba(120, 53, 15, 0.35)",
-    border: "#fcd34d",
-    neonDark: "#fbbf24",
-  },
-};
-
-export const AppProvider = ({ children }: { children: ReactNode }) => {
+export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [listUsers, setListUsers] = useState<User[]>([]);
   const [appData, setAppData] = useState<TaskItem[]>([]);
+  const [monthlyAssignments, setMonthlyAssignments] = useState<MonthlyAssignmentsMap | null>(null);
+  const [selectedAssignmentMonthState, setSelectedAssignmentMonthState] = useState<string>("");
+  const [adminActiveTab, setAdminActiveTab] = useState<"TASKS" | "ASSIGNMENT_REPORT">("TASKS");
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSyncingUsers, setIsSyncingUsers] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonthState] = useState<string>("ALL");
+
+  const [selectedMonthState, setSelectedMonthState] = useState<string>("ALL");
   const [selectedWorker, setSelectedWorker] = useState<string>("ALL");
   const [currentTab, setCurrentTab] = useState<TabFilterType>("ALL");
   const [advancedFilter, setAdvancedFilter] = useState<AdvancedFilterType>("ALL");
-  const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-  const [impersonatedRole, setImpersonatedRole] = useState<string | null>(null);
+
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [themeAccent, setThemeAccentState] = useState<ThemeAccent>("blue");
 
-  // Dữ liệu phân công đề theo tháng (Sheet 2) dành riêng cho Admin
-  const [monthlyAssignments, setMonthlyAssignments] = useState<MonthlyAssignmentsMap>({});
-  const [selectedAssignmentMonth, setSelectedAssignmentMonthState] = useState<string>("");
-  const [adminActiveTab, setAdminActiveTab] = useState<'TASKS' | 'ASSIGNMENT_REPORT'>('TASKS');
+  const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [impersonatedRole, setImpersonatedRole] = useState<"ADMIN" | "QC" | "WORKER" | null>(null);
 
-  // Áp dụng biến CSS tùy chỉnh màu chủ đạo cho toàn bộ ứng dụng
+  const [appConfig, setAppConfig] = useState<Record<string, any> | null>(null);
+
   const applyAccentCSS = useCallback((accent: ThemeAccent) => {
-    const config = ACCENT_COLOR_MAP[accent] || ACCENT_COLOR_MAP.blue;
-    document.documentElement.style.setProperty("--accent-primary", config.color);
-    document.documentElement.style.setProperty("--accent-glow", config.glow);
-    document.documentElement.style.setProperty("--accent-glow-dark", config.glowDark);
-    document.documentElement.style.setProperty("--accent-light", config.light);
-    document.documentElement.style.setProperty("--accent-dark-bg", config.darkBg);
-    document.documentElement.style.setProperty("--accent-border", config.border);
-    document.documentElement.style.setProperty("--accent-neon", config.neonDark);
+    const accents: ThemeAccent[] = ["blue", "indigo", "purple", "emerald", "rose", "amber"];
+    accents.forEach((a) => document.documentElement.classList.remove(`accent-${a}`));
+    document.documentElement.classList.add(`accent-${accent}`);
   }, []);
 
-  // Khởi tạo Auth, Theme, Cấu hình và Dữ liệu Cache từ localStorage để hiển thị tức thì (0.01s)
+  // Khởi tạo đọc bộ nhớ đệm (Cache) khi khởi động
   useEffect(() => {
     try {
-      const savedUser = localStorage.getItem("qc_auth");
-      if (savedUser) {
-        setCurrentUser(JSON.parse(savedUser));
+      const savedAuth = localStorage.getItem("qc_auth");
+      if (savedAuth) {
+        const user = JSON.parse(savedAuth);
+        if (user && user.name) setCurrentUser(user);
       }
       const cachedUsers = localStorage.getItem("qc_users_cache");
       if (cachedUsers) {
         try {
           const parsed = JSON.parse(cachedUsers);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setListUsers(parsed);
-          }
+          if (Array.isArray(parsed) && parsed.length > 0) setListUsers(parsed);
         } catch (e) {}
       }
       const cachedData = localStorage.getItem("qc_app_data_cache");
       if (cachedData) {
         try {
           const parsed = JSON.parse(cachedData);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setAppData(parsed);
-          }
+          if (Array.isArray(parsed) && parsed.length > 0) setAppData(parsed);
         } catch (e) {}
       }
       const cachedMonthly = localStorage.getItem("qc_monthly_assignments_cache");
@@ -279,6 +170,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             const mKeys = Object.keys(parsed);
             if (mKeys.length > 0) setSelectedAssignmentMonthState(mKeys[0]);
           }
+        } catch (e) {}
+      }
+      const cachedConfig = localStorage.getItem("qc_app_config_cache");
+      if (cachedConfig) {
+        try {
+          const parsed = JSON.parse(cachedConfig);
+          if (parsed && typeof parsed === "object") setAppConfig(parsed);
         } catch (e) {}
       }
       const savedMonth = localStorage.getItem("qc_selected_month");
@@ -319,87 +217,67 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     applyAccentCSS(accent);
   }, [applyAccentCSS]);
 
-  // Gọi API GET siêu tốc (Có fallback và timeout)
-  const apiGet = async () => {
-    try {
-      const res = await fetch(PRIMARY_API, { cache: "no-store" });
-      if (res.ok) {
-        const json = await res.json();
-        if (json && (Array.isArray(json.data) || Array.isArray(json.users))) {
-          return json;
-        }
-      }
-    } catch (e) {
-      console.warn("Proxy GET lỗi, chuyển sang gọi trực tiếp fallback...", e);
-    }
-    
-    // Fallback gọi trực tiếp Google Apps Script
-    const resDirect = await fetch(FALLBACK_DIRECT_API);
-    if (resDirect.ok) return await resDirect.json();
-    throw new Error("Không thể kết nối đến máy chủ dữ liệu!");
-  };
-
-  // Gọi API POST
-  const apiPost = async (payload: any) => {
-    try {
-      const res = await fetch(PRIMARY_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {
-      console.warn("Proxy POST lỗi, gọi trực tiếp fallback...");
-    }
-
-    const resDirect = await fetch(FALLBACK_DIRECT_API, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    return await resDirect.json();
-  };
-
-  // Lấy danh sách nhân sự để đăng nhập (Tự lưu cache để lần sau mở lên có ngay lập tức)
-  const fetchUsersForLogin = useCallback(async () => {
+  // Tải danh sách Users để đăng nhập
+  const fetchUsersForLogin = useCallback(async (): Promise<User[]> => {
     setIsSyncingUsers(true);
-    setError(null);
     try {
-      const json = await apiGet();
+      const json = await fetchAppData();
       if (json && Array.isArray(json.users) && json.users.length > 0) {
         setListUsers(json.users);
         try {
           localStorage.setItem("qc_users_cache", JSON.stringify(json.users));
         } catch (e) {}
+        return json.users;
       }
-    } catch (e: any) {
-      setError(e.message || "Lỗi tải danh sách nhân sự.");
-      throw e;
+      return listUsers;
+    } catch (e) {
+      return listUsers;
     } finally {
       setIsSyncingUsers(false);
     }
-  }, []);
+  }, [listUsers]);
 
   // Xử lý đăng nhập
   const login = useCallback(
-    (name: string, pass: string) => {
-      const user = listUsers.find((u) => cleanStr(u.name) === cleanStr(name));
-      if (user && user.pass === pass) {
+    async (name: string, pass: string): Promise<{ success: boolean; message?: string }> => {
+      let currentUsersList = listUsers;
+      if (!currentUsersList || currentUsersList.length === 0) {
+        currentUsersList = await fetchUsersForLogin();
+      }
+
+      const cleanInputName = cleanStr(name).toLowerCase();
+      const user = currentUsersList.find(
+        (u) => cleanStr(u.name).toLowerCase() === cleanInputName
+      );
+
+      if (!user) {
+        return { success: false, message: "Tên đăng nhập không tồn tại trong hệ thống!" };
+      }
+
+      const inputPassClean = String(pass || "").trim();
+      const userPassClean = String(user.password || "").trim();
+
+      if (userPassClean === inputPassClean || !userPassClean) {
         setCurrentUser(user);
-        localStorage.setItem("qc_auth", JSON.stringify(user));
+        try {
+          localStorage.setItem("qc_auth", JSON.stringify(user));
+          const userSavedMonth = localStorage.getItem(`qc_selected_month_${user.name}`);
+          if (userSavedMonth) {
+            setSelectedMonthState(userSavedMonth);
+          }
+        } catch (e) {}
         return { success: true };
       }
       return { success: false, message: "Mật khẩu không chính xác!" };
     },
-    [listUsers]
+    [listUsers, fetchUsersForLogin]
   );
 
   // Xử lý đăng xuất
   const logout = useCallback(() => {
     localStorage.removeItem("qc_auth");
-    localStorage.removeItem("qc_selected_month");
     setCurrentUser(null);
     setAppData([]);
-    setSelectedMonthState("ALL");
     setSelectedWorker("ALL");
     setCurrentTab("ALL");
     setAdvancedFilter("ALL");
@@ -407,12 +285,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setIsCreateModalOpen(false);
   }, []);
 
-  // Tải dữ liệu toàn bộ bảng tính (kèm lưu cache)
+  // Tải dữ liệu toàn bộ bảng tính
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const json = await apiGet();
+      const json = await fetchAppData();
 
       if (json && Array.isArray(json.data)) {
         const validData: TaskItem[] = json.data.filter(
@@ -430,7 +308,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           } catch (e) {}
         }
 
-        // Nhận diện dữ liệu phân công theo tháng
         if (json.monthly_assignments && typeof json.monthly_assignments === "object") {
           setMonthlyAssignments(json.monthly_assignments);
           try {
@@ -446,6 +323,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           }
         }
 
+        if (json.config && typeof json.config === "object") {
+          setAppConfig(json.config);
+          try {
+            localStorage.setItem("qc_app_config_cache", JSON.stringify(json.config));
+            if (json.config.nd_salary_rates) {
+              localStorage.setItem("nd_salary_rates", JSON.stringify(json.config.nd_salary_rates));
+            }
+            if (json.config.qc_salary_rate_question !== undefined) {
+              localStorage.setItem("qc_salary_rate_question", String(json.config.qc_salary_rate_question));
+            }
+            if (json.config.qc_salary_rate_error !== undefined) {
+              localStorage.setItem("qc_salary_rate_error", String(json.config.qc_salary_rate_error));
+            }
+          } catch (e) {}
+        }
+
         const rawMonths = Array.from(
           new Set(
             validData
@@ -458,9 +351,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
         const months = sortMonthsChronological(rawMonths);
 
-        const savedMonth = localStorage.getItem("qc_selected_month");
-        if (savedMonth && months.includes(savedMonth)) {
-          setSelectedMonthState(savedMonth);
+        const userSpecificMonth = currentUser?.name ? localStorage.getItem(`qc_selected_month_${currentUser.name}`) : null;
+        const savedMonth = userSpecificMonth || localStorage.getItem("qc_selected_month");
+        if (savedMonth) {
+          if (savedMonth === "ALL" || months.includes(savedMonth)) {
+            setSelectedMonthState(savedMonth);
+          }
         } else if (months.length > 0) {
           setSelectedMonthState(months[0]);
         }
@@ -470,12 +366,29 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
+  }, [currentUser]);
+
+  // Lưu cấu hình đơn giá lương lên server
+  const saveConfigToServer = useCallback(async (key: string, value: any) => {
+    try {
+      const payload = {
+        action: "SAVE_CONFIG",
+        key,
+        value,
+      };
+      await postAppData(payload);
+      setAppConfig((prev) => ({ ...prev, [key]: value }));
+      return true;
+    } catch (e) {
+      console.error("Lỗi lưu cấu hình lên server:", e);
+      return false;
+    }
   }, []);
 
-  // Đồng bộ dữ liệu ngầm thời gian thực (Silent Real-time Sync không làm giật màn hình)
+  // Đồng bộ dữ liệu ngầm không giật màn hình
   const syncDataSilently = useCallback(async () => {
     try {
-      const json = await apiGet();
+      const json = await fetchAppData();
       if (json && Array.isArray(json.data)) {
         const validData: TaskItem[] = json.data.filter(
           (t: TaskItem) => cleanStr(getVal(t, "Ai làm")) !== "" || cleanStr(getVal(t, "Tên đề")) !== ""
@@ -499,46 +412,41 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           } catch (e) {}
         }
       }
-    } catch (e) {
-      // Bỏ qua lỗi kết nối ngầm, giữ nguyên dữ liệu hiện tại
-    }
+    } catch (e) {}
   }, []);
 
   useEffect(() => {
     if (currentUser) {
       loadData();
-
-      // Đồng bộ thời gian thực mỗi 10 giây (Tự động nhận thông báo & lỗi mới từ người khác)
       const pollInterval = setInterval(() => {
         syncDataSilently();
       }, 10000);
-
       return () => clearInterval(pollInterval);
     }
   }, [currentUser, loadData, syncDataSilently]);
 
   const setSelectedMonth = useCallback((month: string) => {
     setSelectedMonthState(month);
-    if (month !== "ALL") {
+    try {
       localStorage.setItem("qc_selected_month", month);
-    }
-  }, []);
+      if (currentUser?.name) {
+        localStorage.setItem(`qc_selected_month_${currentUser.name}`, month);
+      }
+    } catch (e) {}
+  }, [currentUser]);
 
-  // Danh sách các tháng được chuẩn hóa và sắp xếp chuẩn theo thời gian (mới nhất lên đầu)
+  // Danh sách các tháng hợp nhất từ cả Sheet 1 và Sheet 2
   const availableMonths = useMemo(() => {
-    const rawMonths = Array.from(
-      new Set(
-        appData
-          .map((t) =>
-            normalizeMonthStr(getVal(t, "ID/ tháng") || getVal(t, "ID/tháng"))
-          )
-          .filter(Boolean)
-      )
+    const fromSheet1 = appData.map((t) =>
+      normalizeMonthStr(getVal(t, "ID/ tháng") || getVal(t, "ID/tháng"))
     );
-    return sortMonthsChronological(rawMonths);
-  }, [appData]);
+    const fromSheet2 = Object.keys(monthlyAssignments || {}).map((tab) =>
+      normalizeMonthStr(tab)
+    );
+    const allUnique = Array.from(new Set([...fromSheet1, ...fromSheet2])).filter(Boolean);
+    return sortMonthsChronological(allUnique);
+  }, [appData, monthlyAssignments]);
 
-  // Danh sách nhân sự: Lấy toàn bộ từ tab Users (Cột Họ và tên) + người xuất hiện trên Sheet
   const availableWorkers = useMemo(() => {
     const usersNames = listUsers.map((u) => cleanStr(u.name)).filter(Boolean);
     const dataNames = appData.map((t) => cleanStr(getVal(t, "Ai làm"))).filter(Boolean);
@@ -546,7 +454,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return allUnique.sort();
   }, [listUsers, appData]);
 
-  // Danh sách QC: Lọc từ tab Users có role QC hoặc ADMIN
   const availableQCs = useMemo(() => {
     const qcsFromUsers = listUsers
       .filter((u) => cleanStr(u.role).toUpperCase() === "QC" || cleanStr(u.role).toUpperCase() === "ADMIN")
@@ -563,7 +470,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return currentUser?.role;
   }, [currentUser, impersonatedRole]);
 
-  // Tập dữ liệu theo tháng và nhân sự (Chuẩn hóa so sánh sạch sẽ, normalize tháng)
+  // Tập dữ liệu theo tháng và nhân sự
   const baseMonthWorkerTasks = useMemo(() => {
     if (!currentUser) return [];
 
@@ -571,7 +478,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const idThang = normalizeMonthStr(
         getVal(item, "ID/ tháng") || getVal(item, "ID/tháng")
       );
-      const mMatch = selectedMonth === "ALL" || idThang === selectedMonth;
+      const mMatch = selectedMonthState === "ALL" || idThang === selectedMonthState;
 
       let uMatch = true;
       if (effectiveRole !== "WORKER") {
@@ -584,30 +491,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
       return mMatch && uMatch;
     });
-  }, [appData, currentUser, effectiveRole, selectedMonth, selectedWorker]);
+  }, [appData, currentUser, effectiveRole, selectedMonthState, selectedWorker]);
 
-  // Đếm số lượng theo từng Tab
+  // Tab counts
   const tabCounts = useMemo(() => {
-    const counts: TabCounts = {
-      ALL: baseMonthWorkerTasks.length,
-      PENDING: 0,
-      ERROR: 0,
-      WRONG: 0,
-      PASS: 0,
-    };
-
-    baseMonthWorkerTasks.forEach((item) => {
-      const code = getStatusObj(item).code;
-      if (code === "PASS") counts.PASS += 1;
-      else if (code === "ERROR") counts.ERROR += 1;
-      else if (code === "WRONG") counts.WRONG += 1;
-      else counts.PENDING += 1;
-    });
-
-    return counts;
+    return calculateTabCounts(baseMonthWorkerTasks);
   }, [baseMonthWorkerTasks]);
 
-  // Danh sách đề sau khi lọc theo Tab & Bộ Lọc Nâng Cao (bao gồm ⭐ Đề của tôi, ⚠️ Lỗi >=2, ⏳ Tồn >3 ngày)
+  // Filtered tasks
   const filteredTasks = useMemo(() => {
     let list = baseMonthWorkerTasks;
 
@@ -637,9 +528,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return list;
   }, [baseMonthWorkerTasks, currentTab, advancedFilter, currentUser]);
 
-  // Thống kê tổng hợp & Hiệu suất Nhân sự Nội Dung & Hiệu suất Đội ngũ QC (Tối ưu Single-Pass O(N))
+  // Thống kê tổng hợp & đội ngũ
   const { stats, workerStats, qcTeamStats } = useMemo(() => {
-    if (!currentUser || baseMonthWorkerTasks.length === 0) {
+    if (!currentUser) {
       return {
         stats: {
           total: 0,
@@ -658,128 +549,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         qcTeamStats: [],
       };
     }
-
-    let pass = 0;
-    let error = 0;
-    let wrong = 0;
-    let pending = 0;
-    let totalQuestions = 0;
-    let totalLoi1 = 0;
-    let totalLoi2 = 0;
-    let totalLoi3 = 0;
-    let multiErrorCount = 0;
-    let pending3DaysCount = 0;
-
-    const workerMap = new Map<string, WorkerStatItem>();
-    const qcMap = new Map<string, QCStatItem>();
-
-    for (let i = 0; i < baseMonthWorkerTasks.length; i++) {
-      const item = baseMonthWorkerTasks[i];
-      const statusObj = getStatusObj(item);
-      const statusCode = statusObj.code;
-
-      if (statusCode === "PASS") pass++;
-      else if (statusCode === "ERROR") error++;
-      else if (statusCode === "WRONG") wrong++;
-      else pending++;
-
-      const qs = parseInt(getVal(item, "Số câu")) || 0;
-      totalQuestions += qs;
-
-      const hasLoi1 = !!getVal(item, "Lỗi lần 1");
-      const hasLoi2 = !!getVal(item, "Lỗi lần 2");
-      const hasLoi3 = !!getVal(item, "Lỗi lần 3");
-
-      if (hasLoi1) totalLoi1++;
-      if (hasLoi2) totalLoi2++;
-      if (hasLoi3) totalLoi3++;
-      if (isMultiError(item)) multiErrorCount++;
-      if (isPending3Days(item)) pending3DaysCount++;
-
-      const errorTotal = (hasLoi1 ? 1 : 0) + (hasLoi2 ? 1 : 0) + (hasLoi3 ? 1 : 0);
-      const workerName = cleanStr(getVal(item, "Ai làm")) || "Chưa rõ";
-      const qcName = cleanStr(getVal(item, "QC")) || "Chưa phân công";
-
-      // Cập nhật thống kê Worker
-      let curW = workerMap.get(workerName);
-      if (!curW) {
-        curW = {
-          workerName,
-          totalTasks: 0,
-          totalQuestions: 0,
-          passCount: 0,
-          errorCount: 0,
-          wrongCount: 0,
-          pendingCount: 0,
-          loi1Count: 0,
-          loi2Count: 0,
-          loi3Count: 0,
-          totalErrors: 0,
-          passRate: 0,
-        };
-        workerMap.set(workerName, curW);
-      }
-      curW.totalTasks += 1;
-      curW.totalQuestions += qs;
-      if (statusCode === "PASS") curW.passCount += 1;
-      else if (statusCode === "ERROR") curW.errorCount += 1;
-      else if (statusCode === "WRONG") curW.wrongCount += 1;
-      else curW.pendingCount += 1;
-
-      if (hasLoi1) curW.loi1Count += 1;
-      if (hasLoi2) curW.loi2Count += 1;
-      if (hasLoi3) curW.loi3Count += 1;
-      curW.totalErrors = curW.loi1Count + curW.loi2Count + curW.loi3Count;
-      curW.passRate = curW.totalTasks > 0 ? Math.round((curW.passCount / curW.totalTasks) * 100) : 0;
-
-      // Cập nhật thống kê QC
-      let curQC = qcMap.get(qcName);
-      if (!curQC) {
-        curQC = {
-          qcName,
-          totalCheckedTasks: 0,
-          totalQuestionsChecked: 0,
-          totalErrorsFound: 0,
-          totalPassed: 0,
-          passRate: 0,
-        };
-        qcMap.set(qcName, curQC);
-      }
-      curQC.totalCheckedTasks += 1;
-      curQC.totalQuestionsChecked += qs;
-      curQC.totalErrorsFound += errorTotal;
-      if (statusCode === "PASS") curQC.totalPassed += 1;
-      curQC.passRate = curQC.totalCheckedTasks > 0 ? Math.round((curQC.totalPassed / curQC.totalCheckedTasks) * 100) : 0;
-    }
-
-    const workerStatsList = Array.from(workerMap.values()).sort(
-      (a, b) => b.totalQuestions - a.totalQuestions
-    );
-
-    const qcTeamStatsList = Array.from(qcMap.values()).sort(
-      (a, b) => b.totalQuestionsChecked - a.totalQuestionsChecked
-    );
-
-    return {
-      stats: {
-        total: baseMonthWorkerTasks.length,
-        pass,
-        error,
-        wrong,
-        pending,
-        totalQuestions,
-        totalLoi1,
-        totalLoi2,
-        totalLoi3,
-        multiErrorCount,
-        pending3DaysCount,
-      },
-      workerStats: workerStatsList,
-      qcTeamStats: qcTeamStatsList,
-    };
+    return calculateDashboardAndTeamStats(baseMonthWorkerTasks);
   }, [baseMonthWorkerTasks, currentUser]);
 
-  // Thống kê cá nhân dành riêng cho QC
+  // Thống kê cá nhân QC
   const qcPersonalStats = useMemo(() => {
     if (!currentUser) {
       return {
@@ -790,53 +563,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         tasksList: [],
       };
     }
+    return calculateQcPersonalStats(appData, currentUser.name, selectedMonthState);
+  }, [appData, currentUser, selectedMonthState]);
 
-    const currentQCName = cleanStr(currentUser.name).toLowerCase();
-    const isQC = currentUser.role === "QC";
-
-    const qcTasks = appData.filter((item) => {
-      const idThang = normalizeMonthStr(
-        getVal(item, "ID/ tháng") || getVal(item, "ID/tháng")
-      );
-      const mMatch = selectedMonth === "ALL" || idThang === selectedMonth;
-      const qcMatch = isQC ? cleanStr(getVal(item, "QC")).toLowerCase() === currentQCName : true;
-      return mMatch && qcMatch;
-    });
-
-    let totalQuestions = 0;
-    let totalErrorsFound = 0;
-    let totalPassed = 0;
-
-    qcTasks.forEach((item) => {
-      const qs = parseInt(getVal(item, "Số câu")) || 0;
-      totalQuestions += qs;
-
-      if (getVal(item, "Lỗi lần 1")) totalErrorsFound++;
-      if (getVal(item, "Lỗi lần 2")) totalErrorsFound++;
-      if (getVal(item, "Lỗi lần 3")) totalErrorsFound++;
-
-      if (getStatusObj(item).code === "PASS") totalPassed++;
-    });
-
-    return {
-      totalTasks: qcTasks.length,
-      totalQuestions,
-      totalErrorsFound,
-      totalPassed,
-      tasksList: qcTasks,
-    };
-  }, [appData, currentUser, selectedMonth]);
-
-  // Tạo đề bài mới (QC & Admin)
+  // Thao tác tạo đề mới
   const createNewTask = useCallback(
     async (payload: CreateTaskPayload) => {
       try {
-        const result = await apiPost(payload);
+        const result = await postAppData(payload);
         if (result && result.status === "success") {
           await loadData();
           return { success: true };
         }
-        return { success: false, message: result?.message || "Lỗi tạo đề bài từ Google Apps Script!" };
+        return { success: false, message: result?.message || "Lỗi tạo đề bài!" };
       } catch (e: any) {
         return { success: false, message: e.message || "Lỗi kết nối máy chủ!" };
       }
@@ -844,16 +583,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     [loadData]
   );
 
-  // Lưu chi tiết đề bài
+  // Thao tác lưu chi tiết đề bài
   const saveTaskDetails = useCallback(
     async (payload: SaveTaskPayload) => {
       try {
-        const result = await apiPost(payload);
+        const result = await postAppData(payload);
         if (result && result.status === "success") {
           await loadData();
           return { success: true };
         }
-        return { success: false, message: result?.message || "Lỗi ghi dữ liệu từ Google Apps Script!" };
+        return { success: false, message: result?.message || "Lỗi cập nhật đề bài!" };
       } catch (e: any) {
         return { success: false, message: e.message || "Lỗi kết nối máy chủ!" };
       }
@@ -861,16 +600,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     [loadData]
   );
 
-  // Cập nhật trạng thái duyệt
+  // Cập nhật trạng thái đề bài
   const updateTaskStatus = useCallback(
     async (payload: UpdateStatusPayload) => {
       try {
-        const result = await apiPost(payload);
+        const result = await postAppData(payload);
         if (result && result.status === "success") {
           await loadData();
           return { success: true };
         }
-        return { success: false, message: result?.message || "Lỗi cập nhật trạng thái từ Google!" };
+        return { success: false, message: result?.message || "Lỗi cập nhật trạng thái!" };
       } catch (e: any) {
         return { success: false, message: e.message || "Lỗi kết nối máy chủ!" };
       }
@@ -878,131 +617,123 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     [loadData]
   );
 
-  // Gửi email thông báo trực tiếp cho bạn Nội dung
-  const sendNotificationEmail = useCallback(
-    async (task: TaskItem, customMessage?: string) => {
-      const doerName = cleanStr(getVal(task, "Ai làm")).toLowerCase();
-      const userObj = listUsers.find((u) => cleanStr(u.name).toLowerCase() === doerName);
-      if (!userObj || !userObj.email) {
-        return {
-          success: false,
-          message: `Không tìm thấy địa chỉ email của bạn "${getVal(task, "Ai làm")}" trong danh sách!`,
-        };
-      }
-
-      const payload = {
-        row_index: task.row_index,
-        task_title: getVal(task, "Tên đề"),
-        worker_name: userObj.name,
-        worker_email: userObj.email,
-        send_email: true,
-        loi_1: getVal(task, "Lỗi lần 1"),
-        loi_2: getVal(task, "Lỗi lần 2"),
-        loi_3: getVal(task, "Lỗi lần 3"),
-        note: customMessage || getVal(task, "Note"),
-      };
-
+  // Cập nhật QC done
+  const updateTaskQcDone = useCallback(
+    async (rowIndex: number, isDone: boolean) => {
       try {
-        const result = await apiPost(payload);
+        const payload = {
+          action: "UPDATE_QC_DONE",
+          rowIndex,
+          qc_done: isDone,
+        };
+        const result = await postAppData(payload);
         if (result && result.status === "success") {
-          if (result.email_status && String(result.email_status).startsWith("failed")) {
-            return {
-              success: false,
-              message: `Lỗi gửi mail Apps Script: ${result.email_status}`,
-            };
-          }
-          return { success: true, message: "Đã gửi email thành công!" };
+          await loadData();
+          return { success: true };
         }
-        return { success: false, message: result?.message || "Lỗi gửi email!" };
+        return { success: false, message: result?.message || "Lỗi cập nhật trạng thái QC Done!" };
       } catch (e: any) {
         return { success: false, message: e.message || "Lỗi kết nối máy chủ!" };
       }
     },
-    [listUsers]
+    [loadData]
   );
 
-  // Danh sách các tab tháng phân công có trong dữ liệu
   const availableAssignmentMonths = useMemo(() => {
+    if (!monthlyAssignments) return [];
     return Object.keys(monthlyAssignments);
   }, [monthlyAssignments]);
+
+  const selectedAssignmentMonth = useMemo(() => {
+    if (selectedAssignmentMonthState && availableAssignmentMonths.includes(selectedAssignmentMonthState)) {
+      return selectedAssignmentMonthState;
+    }
+    return availableAssignmentMonths[0] || "";
+  }, [selectedAssignmentMonthState, availableAssignmentMonths]);
 
   const setSelectedAssignmentMonth = useCallback((month: string) => {
     setSelectedAssignmentMonthState(month);
   }, []);
 
-  // Thống kê số câu và tiến độ hoàn thành theo từng QC trong tháng đang chọn
-  const qcQuestionStats = useMemo(() => {
-    if (!monthlyAssignments || !selectedAssignmentMonth) return [];
-    const tasksForMonth = monthlyAssignments[selectedAssignmentMonth] || [];
-    if (tasksForMonth.length === 0) return [];
-
-    const statsMap: Record<string, {
-      totalAssignedTasks: number;
-      totalAssignedQuestions: number;
-      totalCheckedQuestions: number;
-      tasksList: MonthlyAssignmentItem[];
-    }> = {};
-
-    tasksForMonth.forEach((t) => {
-      const qc = cleanStr(t.qc_name) || "Chưa phân công";
-      if (!statsMap[qc]) {
-        statsMap[qc] = {
-          totalAssignedTasks: 0,
+  // QC Question Stats & Team Question Totals
+  const { qcQuestionStats, teamQuestionTotals } = useMemo(() => {
+    if (!monthlyAssignments || !selectedAssignmentMonth) {
+      return {
+        qcQuestionStats: [],
+        teamQuestionTotals: {
+          totalTasks: 0,
           totalAssignedQuestions: 0,
           totalCheckedQuestions: 0,
-          tasksList: [],
-        };
-      }
-
-      statsMap[qc].totalAssignedTasks += 1;
-      statsMap[qc].totalAssignedQuestions += (t.so_cau || 0);
-      if (t.qc_done) {
-        statsMap[qc].totalCheckedQuestions += (t.so_cau || 0);
-      }
-      statsMap[qc].tasksList.push(t);
-    });
-
-    const result: QCQuestionStatItem[] = Object.keys(statsMap).map((qcName) => {
-      const item = statsMap[qcName];
-      const rate = item.totalAssignedQuestions > 0
-        ? Math.round((item.totalCheckedQuestions / item.totalAssignedQuestions) * 1000) / 10
-        : 0;
-      return {
-        qcName,
-        totalAssignedTasks: item.totalAssignedTasks,
-        totalAssignedQuestions: item.totalAssignedQuestions,
-        totalCheckedQuestions: item.totalCheckedQuestions,
-        completionRate: rate,
-        tasksList: item.tasksList,
+          completionRate: 0,
+        },
       };
-    });
+    }
 
-    return result.sort((a, b) => b.totalAssignedQuestions - a.totalAssignedQuestions);
-  }, [monthlyAssignments, selectedAssignmentMonth]);
+    const currentTasks: MonthlyAssignmentItem[] =
+      monthlyAssignments[selectedAssignmentMonth] || [];
 
-  // Tổng toàn team theo số câu trong tháng đang chọn
-  const teamQuestionTotals = useMemo<TeamQuestionTotals>(() => {
+    const qcMap = new Map<string, QCQuestionStatItem>();
+
     let totalTasks = 0;
     let totalAssignedQuestions = 0;
     let totalCheckedQuestions = 0;
 
-    qcQuestionStats.forEach((qc) => {
-      totalTasks += qc.totalAssignedTasks;
-      totalAssignedQuestions += qc.totalAssignedQuestions;
-      totalCheckedQuestions += qc.totalCheckedQuestions;
+    currentTasks.forEach((t) => {
+      const qcNameRaw = t.qc_name || "Chưa phân công";
+      const qcName = cleanStr(qcNameRaw) || "Chưa phân công";
+      const soCau = typeof t.so_cau === "number" ? t.so_cau : parseInt(String(t.so_cau), 10) || 0;
+      const isDone = t.qc_done === true;
+
+      totalTasks += 1;
+      totalAssignedQuestions += soCau;
+      if (isDone) totalCheckedQuestions += soCau;
+
+      let item = qcMap.get(qcName.toLowerCase());
+      if (!item) {
+        item = {
+          qcName: qcNameRaw,
+          totalAssignedTasks: 0,
+          totalAssignedQuestions: 0,
+          totalCheckedQuestions: 0,
+          completionRate: 0,
+          tasksList: [],
+        };
+        qcMap.set(qcName.toLowerCase(), item);
+      }
+
+      item.totalAssignedTasks += 1;
+      item.totalAssignedQuestions += soCau;
+      item.tasksList.push(t);
+
+      if (isDone) {
+        item.totalCheckedQuestions += soCau;
+      }
+
+      item.completionRate =
+        item.totalAssignedQuestions > 0
+          ? Math.round((item.totalCheckedQuestions / item.totalAssignedQuestions) * 100)
+          : 0;
     });
 
-    const completionRate = totalAssignedQuestions > 0
-      ? Math.round((totalCheckedQuestions / totalAssignedQuestions) * 1000) / 10
-      : 0;
+    const statsList = Array.from(qcMap.values()).sort(
+      (a, b) => b.totalAssignedQuestions - a.totalAssignedQuestions
+    );
+
+    const completionRate =
+      totalAssignedQuestions > 0
+        ? Math.round((totalCheckedQuestions / totalAssignedQuestions) * 100)
+        : 0;
 
     return {
-      totalTasks,
-      totalAssignedQuestions,
-      totalCheckedQuestions,
-      completionRate,
+      qcQuestionStats: statsList,
+      teamQuestionTotals: {
+        totalTasks,
+        totalAssignedQuestions,
+        totalCheckedQuestions,
+        completionRate,
+      },
     };
-  }, [qcQuestionStats]);
+  }, [monthlyAssignments, selectedAssignmentMonth]);
 
   return (
     <AppContext.Provider
@@ -1013,7 +744,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isSyncingUsers,
         error,
-        selectedMonth,
+        selectedMonth: selectedMonthState,
         selectedWorker,
         currentTab,
         advancedFilter,
@@ -1038,6 +769,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         qcQuestionStats,
         teamQuestionTotals,
         adminActiveTab,
+        appConfig,
+        saveConfigToServer,
         setAdminActiveTab,
         setImpersonatedRole,
         setEditingTask,
@@ -1055,7 +788,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         createNewTask,
         saveTaskDetails,
         updateTaskStatus,
-        sendNotificationEmail,
+        updateTaskQcDone,
       }}
     >
       {children}

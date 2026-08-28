@@ -60,14 +60,14 @@ export const AuthScreen: React.FC = () => {
     }
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) {
       setErrorMessage("Vui lòng chọn tài khoản của bạn!");
       return;
     }
 
-    const result = login(selectedUser, password);
+    const result = await login(selectedUser, password);
     if (!result.success) {
       setErrorMessage(result.message || "Mật khẩu không chính xác!");
     }

@@ -32,6 +32,8 @@ export const formatURL = (url: any): string => {
 export interface ExtractedLinkItem {
   title: string;
   url: string;
+  text?: string;
+  raw?: string;
 }
 
 // Bóc tách toàn bộ link trong văn bản (hỗ trợ [Tên chữ](url), =HYPERLINK("url", "tên"), hoặc url thuần)
@@ -47,7 +49,7 @@ export const extractRichLinks = (text: string): ExtractedLinkItem[] => {
     const title = mdMatch[1].trim();
     const url = formatURL(mdMatch[2]);
     if (!seenUrls.has(url)) {
-      results.push({ title: title || "Link tài liệu", url });
+      results.push({ title: title || "Link tài liệu", url, text: title || "Link tài liệu", raw: mdMatch[0] });
       seenUrls.add(url);
     }
   }
@@ -59,7 +61,7 @@ export const extractRichLinks = (text: string): ExtractedLinkItem[] => {
     const url = formatURL(sMatch[1]);
     const title = sMatch[2].trim();
     if (!seenUrls.has(url)) {
-      results.push({ title: title || "Link tài liệu", url });
+      results.push({ title: title || "Link tài liệu", url, text: title || "Link tài liệu", raw: sMatch[0] });
       seenUrls.add(url);
     }
   }
@@ -71,7 +73,7 @@ export const extractRichLinks = (text: string): ExtractedLinkItem[] => {
     const title = bMatch[1]?.trim() || "Minh chứng";
     const url = formatURL(bMatch[2]);
     if (!seenUrls.has(url)) {
-      results.push({ title: title, url });
+      results.push({ title: title, url, text: title, raw: bMatch[0] });
       seenUrls.add(url);
     }
   }
@@ -83,23 +85,18 @@ export const extractRichLinks = (text: string): ExtractedLinkItem[] => {
     const title = prMatch[1].trim();
     const url = formatURL(prMatch[2]);
     if (!seenUrls.has(url)) {
-      results.push({ title: title || "Link đính kèm", url });
+      results.push({ title: title || "Link đính kèm", url, text: title || "Link đính kèm", raw: prMatch[0] });
       seenUrls.add(url);
     }
   }
 
-  // 5. Các đường link thô còn lại https://...
-  const rawUrlRegex = /(https?:\/\/[^\s\)\],]+)/g;
-  let rMatch;
-  while ((rMatch = rawUrlRegex.exec(text)) !== null) {
-    const url = formatURL(rMatch[1]);
+  // 5. Dạng URL thuần
+  const urlRegex = /(https?:\/\/[^\s\)]+)/g;
+  let uMatch;
+  while ((uMatch = urlRegex.exec(text)) !== null) {
+    const url = formatURL(uMatch[1]);
     if (!seenUrls.has(url)) {
-      let shortTitle = "Mở Link";
-      try {
-        const u = new URL(url);
-        shortTitle = u.hostname.replace("www.", "");
-      } catch (e) {}
-      results.push({ title: shortTitle, url });
+      results.push({ title: "Đường dẫn đính kèm", url, text: "Đường dẫn đính kèm", raw: uMatch[0] });
       seenUrls.add(url);
     }
   }
@@ -139,7 +136,15 @@ export const normalizeMonthStr = (str: string): string => {
     .replace(/^t\s*/i, "")
     .trim();
   
-  // Chuẩn hóa dạng "08/2026", "8/2026", "8.2026", "08.2026" -> "8/2026"
+  // Chuẩn hóa dạng phụ "8.1.2026", "8.1/2026", "08.1.2026", "Tháng 8.1.2026" -> "8.1/2026"
+  const subMatch = cleaned.match(/^0?(\d{1,2})\.1[\.\/](\d{4})$/);
+  if (subMatch) {
+    const month = parseInt(subMatch[1], 10);
+    const year = subMatch[2];
+    return `${month}.1/${year}`;
+  }
+
+  // Chuẩn hóa dạng chuẩn "08/2026", "8/2026", "8.2026", "08.2026", "Tháng 8.2026", "Tháng 9.2026" -> "8/2026", "9/2026"
   const mMatch = cleaned.match(/^0?(\d{1,2})[\.\/](\d{4})$/);
   if (mMatch) {
     const month = parseInt(mMatch[1], 10);
@@ -247,6 +252,25 @@ export const parseQcErrorCount = (text: string | null | undefined): number => {
 
   // Nếu không có dạng X/Y nhưng có text mô tả lỗi thực tế
   return 1;
+};
+
+// Kiểm tra trạng thái Done của QC (hỗ trợ cả Sheet ND và Sheet QC với mọi định dạng)
+export const isQcDone = (val: any): boolean => {
+  if (!val) return false;
+  if (val === true) return true;
+  const s = cleanStr(val).toLowerCase();
+  return (
+    s === "true" ||
+    s === "✅" ||
+    s === "☑" ||
+    s === "1" ||
+    s === "xong" ||
+    s === "done" ||
+    s === "pass" ||
+    s === "đạt" ||
+    s === "dat" ||
+    s === "hoàn thành"
+  );
 };
 
 // Tự động nhận diện trạng thái đề dù nhập tay bất kỳ định dạng nào trên Google Sheets
@@ -488,7 +512,7 @@ export const exportQcSalaryStatsToCSV = (
 
   let csv = "\uFEFF";
   csv += `BẢNG TÍNH LƯƠNG & LỖI QC - ${monthName}\r\n\r\n`;
-  csv += "Nhân sự QC,Vai trò,Số đề đã Done,Số câu đã check (Done),Số lỗi đã check,Tổng tiền (VNĐ)\r\n";
+  csv += "Nhân sự QC,Vai trò,Số đề đã check,Số câu đã check,Số lỗi đã check,Tổng tiền (VNĐ)\r\n";
 
   qcSalaryStats.forEach((q) => {
     csv += `"${q.qcName}","${q.role || "QC"}",${q.doneTasksCount || 0},${q.doneQuestionsCount || 0},${q.totalErrorsChecked || 0},${q.totalSalary || 0}\r\n`;

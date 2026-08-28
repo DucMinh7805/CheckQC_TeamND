@@ -167,7 +167,7 @@ export const QCDashboard: React.FC<QCDashboardProps> = ({ onOpenDetails }) => {
                     </td>
                   </tr>
                 ) : (
-                  qcPersonalStats.tasksList.map((t) => {
+                  qcPersonalStats.tasksList.map((t: TaskItem) => {
                     const st = getStatusObj(t);
                     const loi1 = getVal(t, "Lỗi lần 1");
                     const loi2 = getVal(t, "Lỗi lần 2");
