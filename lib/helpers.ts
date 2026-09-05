@@ -136,19 +136,19 @@ export const normalizeMonthStr = (str: string): string => {
     .replace(/^t\s*/i, "")
     .trim();
   
-  // Chuẩn hóa dạng phụ "8.1.2026", "8.1/2026", "08.1.2026", "Tháng 8.1.2026" -> "8.1/2026"
-  const subMatch = cleaned.match(/^0?(\d{1,2})\.1[\.\/](\d{4})$/);
+  // Chuẩn hóa dạng phụ "8.1.2026", "8.1/2026", "08.1.2026", "Tháng 8.1.2026", hoặc gõ tắt "8.1", "08.1" -> "8.1/2026"
+  const subMatch = cleaned.match(/^0?(\d{1,2})\.1(?:[\.\/](\d{4}))?$/);
   if (subMatch) {
     const month = parseInt(subMatch[1], 10);
-    const year = subMatch[2];
+    const year = subMatch[2] || "2026";
     return `${month}.1/${year}`;
   }
 
-  // Chuẩn hóa dạng chuẩn "08/2026", "8/2026", "8.2026", "08.2026", "Tháng 8.2026", "Tháng 9.2026" -> "8/2026", "9/2026"
-  const mMatch = cleaned.match(/^0?(\d{1,2})[\.\/](\d{4})$/);
+  // Chuẩn hóa dạng chuẩn "08/2026", "8/2026", "8.2026", "08.2026", hoặc gõ tắt "8", "9" -> "8/2026", "9/2026"
+  const mMatch = cleaned.match(/^0?(\d{1,2})(?:[\.\/](\d{4}))?$/);
   if (mMatch) {
     const month = parseInt(mMatch[1], 10);
-    const year = mMatch[2];
+    const year = mMatch[2] || "2026";
     return `${month}/${year}`;
   }
 
@@ -181,7 +181,7 @@ export const isTaskInQcSalaryMonth = (
   const tonMatch = combinedNote.match(/(?:đề\s*)?t[ồo]n\s*(?:t|tháng\s*)?(\d{1,2}(?:\.\d{1,2})?)/i) || 
                    (combinedNote.includes("đề tồn") || combinedNote.includes("de ton") ? true : null);
 
-  const subMonthMatch = originMonthNorm.match(/^(\d{1,2})\.1\/(\d{4})/);
+  const subMonthMatch = originMonthNorm.match(/^(\d{1,2})\.1(?:\/(\d{4}))?/);
 
   if (tonMatch || subMonthMatch) {
     let tonMonthNum = 0;

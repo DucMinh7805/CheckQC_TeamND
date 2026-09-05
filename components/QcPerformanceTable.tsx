@@ -14,7 +14,7 @@
 import React, { useState, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
 import { TaskItem } from "@/types";
-import { cleanStr, getVal, getStatusObj } from "@/lib/helpers";
+import { cleanStr, getVal, getStatusObj, isTaskInQcSalaryMonth } from "@/lib/helpers";
 import { Button } from "@/components/ui/button";
 import { Award, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { QcTaskDetailRow } from "@/components/QcTaskDetailRow";
@@ -78,6 +78,15 @@ export const QcPerformanceTable: React.FC = () => {
     const clean = cleanStr(qcName).toLowerCase();
     return appData.filter((task: TaskItem) => {
       if (cleanStr(getVal(task, "QC")).toLowerCase() !== clean) return false;
+      
+      // Lọc theo đúng kỳ tháng được chọn trên Bảng Năng Suất (tránh hiện lỗi của tháng khác hoặc đề đã xong từ tháng trước)
+      if (selectedAssignmentMonth && selectedAssignmentMonth !== "ALL") {
+        const itemMonth = getVal(task, "ID/ tháng") || getVal(task, "ID/tháng");
+        if (!isTaskInQcSalaryMonth(itemMonth, getVal(task, "Note"), getVal(task, "Leader check"), selectedAssignmentMonth)) {
+          return false;
+        }
+      }
+
       const l1 = cleanStr(getVal(task, "Lỗi lần 1"));
       const l2 = cleanStr(getVal(task, "Lỗi lần 2"));
       const l3 = cleanStr(getVal(task, "Lỗi lần 3"));

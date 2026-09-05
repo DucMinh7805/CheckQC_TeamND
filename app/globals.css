@@ -146,3 +146,187 @@
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
+
+/* ==========================================================================
+   TÙY CHỈNH MÀU SẮC CHỦ ĐẠO (THEME ACCENTS) CHO TOÀN BỘ GIAO DIỆN
+   ========================================================================== */
+
+/* 1. MÀU ĐỎ HỒNG (ROSE) */
+html.accent-rose, .accent-rose {
+  --primary: oklch(0.55 0.22 25);
+  --ring: oklch(0.55 0.22 25);
+}
+html.accent-rose .bg-blue-600,
+html.accent-rose .bg-blue-500,
+html.accent-rose .bg-gradient-to-r.from-blue-600 {
+  background-color: #e11d48 !important;
+  background-image: none !important;
+}
+html.accent-rose .text-blue-600,
+html.accent-rose .text-blue-500,
+html.accent-rose .text-blue-700 {
+  color: #e11d48 !important;
+}
+html.accent-rose .border-blue-500,
+html.accent-rose .border-blue-600 {
+  border-color: #e11d48 !important;
+}
+html.accent-rose .border-blue-200 {
+  border-color: #fecdd3 !important;
+}
+html.accent-rose .bg-blue-50,
+html.accent-rose .bg-blue-100 {
+  background-color: #ffe4e6 !important;
+}
+html.accent-rose .dark .bg-blue-950\/40,
+html.accent-rose .dark .bg-blue-950\/80 {
+  background-color: rgba(76, 5, 25, 0.5) !important;
+}
+html.accent-rose .hover\:bg-blue-700:hover,
+html.accent-rose .hover\:bg-blue-600:hover {
+  background-color: #be123c !important;
+}
+
+/* 2. MÀU TÍM (PURPLE) */
+html.accent-purple, .accent-purple {
+  --primary: oklch(0.55 0.22 300);
+  --ring: oklch(0.55 0.22 300);
+}
+html.accent-purple .bg-blue-600,
+html.accent-purple .bg-blue-500,
+html.accent-purple .bg-gradient-to-r.from-blue-600 {
+  background-color: #9333ea !important;
+  background-image: none !important;
+}
+html.accent-purple .text-blue-600,
+html.accent-purple .text-blue-500,
+html.accent-purple .text-blue-700 {
+  color: #9333ea !important;
+}
+html.accent-purple .border-blue-500,
+html.accent-purple .border-blue-600 {
+  border-color: #9333ea !important;
+}
+html.accent-purple .border-blue-200 {
+  border-color: #e9d5ff !important;
+}
+html.accent-purple .bg-blue-50,
+html.accent-purple .bg-blue-100 {
+  background-color: #f3e8ff !important;
+}
+html.accent-purple .dark .bg-blue-950\/40,
+html.accent-purple .dark .bg-blue-950\/80 {
+  background-color: rgba(59, 7, 100, 0.5) !important;
+}
+html.accent-purple .hover\:bg-blue-700:hover,
+html.accent-purple .hover\:bg-blue-600:hover {
+  background-color: #7e22ce !important;
+}
+
+/* 3. MÀU NGỌC LỤC BẢO (EMERALD) */
+html.accent-emerald, .accent-emerald {
+  --primary: oklch(0.55 0.2 160);
+  --ring: oklch(0.55 0.2 160);
+}
+html.accent-emerald .bg-blue-600,
+html.accent-emerald .bg-blue-500,
+html.accent-emerald .bg-gradient-to-r.from-blue-600 {
+  background-color: #059669 !important;
+  background-image: none !important;
+}
+html.accent-emerald .text-blue-600,
+html.accent-emerald .text-blue-500,
+html.accent-emerald .text-blue-700 {
+  color: #059669 !important;
+}
+html.accent-emerald .border-blue-500,
+html.accent-emerald .border-blue-600 {
+  border-color: #059669 !important;
+}
+html.accent-emerald .border-blue-200 {
+  border-color: #a7f3d0 !important;
+}
+html.accent-emerald .bg-blue-50,
+html.accent-emerald .bg-blue-100 {
+  background-color: #d1fae5 !important;
+}
+html.accent-emerald .dark .bg-blue-950\/40,
+html.accent-emerald .dark .bg-blue-950\/80 {
+  background-color: rgba(6, 78, 59, 0.5) !important;
+}
+html.accent-emerald .hover\:bg-blue-700:hover,
+html.accent-emerald .hover\:bg-blue-600:hover {
+  background-color: #047857 !important;
+}
+
+/* 4. MÀU HỔ PHÁCH (AMBER) */
+html.accent-amber, .accent-amber {
+  --primary: oklch(0.65 0.18 75);
+  --ring: oklch(0.65 0.18 75);
+}
+html.accent-amber .bg-blue-600,
+html.accent-amber .bg-blue-500,
+html.accent-amber .bg-gradient-to-r.from-blue-600 {
+  background-color: #d97706 !important;
+  background-image: none !important;
+}
+html.accent-amber .text-blue-600,
+html.accent-amber .text-blue-500,
+html.accent-amber .text-blue-700 {
+  color: #d97706 !important;
+}
+html.accent-amber .border-blue-500,
+html.accent-amber .border-blue-600 {
+  border-color: #d97706 !important;
+}
+html.accent-amber .border-blue-200 {
+  border-color: #fde68a !important;
+}
+html.accent-amber .bg-blue-50,
+html.accent-amber .bg-blue-100 {
+  background-color: #fef3c7 !important;
+}
+html.accent-amber .dark .bg-blue-950\/40,
+html.accent-amber .dark .bg-blue-950\/80 {
+  background-color: rgba(120, 53, 15, 0.5) !important;
+}
+html.accent-amber .hover\:bg-blue-700:hover,
+html.accent-amber .hover\:bg-blue-600:hover {
+  background-color: #b45309 !important;
+}
+
+/* 5. MÀU CHÀM (INDIGO) */
+html.accent-indigo, .accent-indigo {
+  --primary: oklch(0.5 0.22 275);
+  --ring: oklch(0.5 0.22 275);
+}
+html.accent-indigo .bg-blue-600,
+html.accent-indigo .bg-blue-500,
+html.accent-indigo .bg-gradient-to-r.from-blue-600 {
+  background-color: #4f46e5 !important;
+  background-image: none !important;
+}
+html.accent-indigo .text-blue-600,
+html.accent-indigo .text-blue-500,
+html.accent-indigo .text-blue-700 {
+  color: #4f46e5 !important;
+}
+html.accent-indigo .border-blue-500,
+html.accent-indigo .border-blue-600 {
+  border-color: #4f46e5 !important;
+}
+html.accent-indigo .border-blue-200 {
+  border-color: #c7d2fe !important;
+}
+html.accent-indigo .bg-blue-50,
+html.accent-indigo .bg-blue-100 {
+  background-color: #e0e7ff !important;
+}
+html.accent-indigo .dark .bg-blue-950\/40,
+html.accent-indigo .dark .bg-blue-950\/80 {
+  background-color: rgba(30, 27, 75, 0.5) !important;
+}
+html.accent-indigo .hover\:bg-blue-700:hover,
+html.accent-indigo .hover\:bg-blue-600:hover {
+  background-color: #4338ca !important;
+}

@@ -43,6 +43,7 @@ import {
   isPending3Days,
   sortMonthsChronological,
   normalizeMonthStr,
+  isTaskInQcSalaryMonth,
 } from "@/lib/helpers";
 import { fetchAppData, postAppData } from "@/lib/api";
 import {
@@ -478,7 +479,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const idThang = normalizeMonthStr(
         getVal(item, "ID/ tháng") || getVal(item, "ID/tháng")
       );
-      const mMatch = selectedMonthState === "ALL" || idThang === selectedMonthState;
+      
+      // Hỗ trợ cơ chế đề tồn: Lọc task theo đúng tháng lương (nếu là đề tồn T8 thì hiển thị ở T9)
+      const mMatch = selectedMonthState === "ALL" || isTaskInQcSalaryMonth(
+        idThang, 
+        getVal(item, "Note"), 
+        getVal(item, "Leader check") || getVal(item, "Leader check "), 
+        selectedMonthState
+      );
 
       let uMatch = true;
       if (effectiveRole !== "WORKER") {
