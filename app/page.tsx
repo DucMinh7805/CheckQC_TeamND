@@ -14,7 +14,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useApp } from "@/context/AppContext";
 import { AuthScreen } from "@/components/AuthScreen";
 import { Sidebar } from "@/components/Sidebar";
@@ -64,11 +64,14 @@ export default function HomePage() {
     }
   }, [currentUser]);
 
+  const mainContentRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     setIsMounted(true);
 
     const handleScroll = () => {
-      if (window.scrollY > 280) {
+      const scrollPos = mainContentRef.current?.scrollTop || window.scrollY || 0;
+      if (scrollPos > 280) {
         setShowBackToTop(true);
       } else {
         setShowBackToTop(false);
@@ -76,13 +79,22 @@ export default function HomePage() {
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
+    const mainEl = mainContentRef.current;
+    if (mainEl) {
+      mainEl.addEventListener("scroll", handleScroll, { passive: true });
+    }
 
     // Đăng ký Service Worker cho PWA & nhận thông báo nền trên di động
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
 
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (mainEl) {
+        mainEl.removeEventListener("scroll", handleScroll);
+      }
+    };
   }, []);
 
   // Lắng nghe Phím tắt thông minh toàn cục (Global Keyboard Shortcuts)
@@ -111,6 +123,9 @@ export default function HomePage() {
   }, [isMobileDrawerOpen]);
 
   const scrollToTop = () => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -151,7 +166,7 @@ export default function HomePage() {
   else if (themeAccent === "amber") accentBorderClass = "accent-amber";
 
   return (
-    <div className={`min-h-screen w-full max-w-full bg-[#f4f7fb] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200 relative ${accentBorderClass}`}>
+    <div className={`min-h-screen lg:h-screen lg:max-h-screen w-full max-w-full bg-[#f4f7fb] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200 relative lg:overflow-hidden flex flex-col ${accentBorderClass}`}>
       {/* THANH TOP BAR CỐ ĐỊNH RIÊNG CHO ĐIỆN THOẠI (Mobile Sticky Navigation) */}
       <header className="lg:hidden sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 py-2.5 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-2 min-w-0">
@@ -322,13 +337,17 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Main Container: Thêm items-start để thanh Sidebar bên trái luôn dính cố định (Sticky) khi cuộn trang trên Desktop */}
-      <div className="p-3 sm:p-5 lg:p-6 flex flex-col lg:flex-row items-start gap-4 sm:gap-5 lg:gap-6 w-full max-w-full min-w-0">
+      {/* Main Container 2 Vùng: Desktop chia 2 khu vực độc lập (Cột trái cố định giữ nguyên, Cột phải cuộn riêng biệt) */}
+      <div className="flex-1 flex flex-col lg:flex-row items-stretch gap-4 sm:gap-5 lg:gap-6 p-3 sm:p-5 lg:p-6 w-full max-w-full min-w-0 lg:overflow-hidden lg:h-full">
         {/* Cột trái: Sidebar điều khiển & bộ lọc (Chỉ hiển thị cố định trên Desktop lg+) */}
         <Sidebar />
 
-        {/* Cột phải: Content chính mở rộng tràn viền linh hoạt */}
-        <main className="flex-1 flex flex-col gap-4 sm:gap-5 lg:gap-6 min-w-0 w-full max-w-full overflow-hidden" aria-label="Nội dung chính">
+        {/* Cột phải: Content chính mở rộng và cuộn độc lập */}
+        <main
+          ref={mainContentRef}
+          className="flex-1 flex flex-col gap-4 sm:gap-5 lg:gap-6 min-w-0 w-full max-w-full lg:h-full lg:overflow-y-auto pr-1 pb-12 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700"
+          aria-label="Nội dung chính"
+        >
           {/* Thanh Chuyển Đổi Tab Chế Độ Dành Riêng Cho Admin (2 trong 1) */}
           {effectiveRole === "ADMIN" && (
             <div className="bg-white dark:bg-slate-900 p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-1.5 sm:gap-2">
