@@ -337,15 +337,15 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Main Container 2 Vùng: Desktop chia 2 khu vực độc lập (Cột trái cố định giữ nguyên, Cột phải cuộn riêng biệt) */}
-      <div className="flex-1 flex flex-col lg:flex-row items-stretch gap-4 sm:gap-5 lg:gap-6 p-3 sm:p-5 lg:p-6 w-full max-w-full min-w-0 lg:overflow-hidden lg:h-full">
+      {/* Main Container 2 Vùng: Desktop chia 2 khu vực độc lập, mở rộng tối đa màn hình không bị viền thừa */}
+      <div className="flex-1 flex flex-col lg:flex-row items-stretch gap-2.5 sm:gap-3 lg:gap-3 p-1.5 sm:p-2 lg:p-2 w-full max-w-full min-w-0 lg:overflow-hidden lg:h-full">
         {/* Cột trái: Sidebar điều khiển & bộ lọc (Chỉ hiển thị cố định trên Desktop lg+) */}
         <Sidebar />
 
-        {/* Cột phải: Content chính mở rộng và cuộn độc lập */}
+        {/* Cột phải: Content chính mở rộng tràn viền và cuộn độc lập (ẩn thanh cuộn xấu nhưng vẫn cuộn chuột mượt mà) */}
         <main
           ref={mainContentRef}
-          className="flex-1 flex flex-col gap-4 sm:gap-5 lg:gap-6 min-w-0 w-full max-w-full lg:h-full lg:overflow-y-auto pr-1 pb-12 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700"
+          className="flex-1 flex flex-col gap-3 sm:gap-4 min-w-0 w-full max-w-full lg:h-full lg:overflow-y-auto no-scrollbar scrollbar-none pr-0 pb-10"
           aria-label="Nội dung chính"
         >
           {/* Thanh Chuyển Đổi Tab Chế Độ Dành Riêng Cho Admin (2 trong 1) */}
