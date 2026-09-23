@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { TaskItem } from "@/types";
 import { useApp } from "@/context/AppContext";
 import {
@@ -87,6 +87,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     saveTaskDetails,
     updateTaskStatus,
     impersonatedRole,
+    activeWorkers,
+    activeQCs,
     availableWorkers,
     availableQCs,
   } = useApp();
@@ -103,6 +105,18 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [loi2, setLoi2] = useState<string>("");
   const [loi3, setLoi3] = useState<string>("");
   const [note, setNote] = useState<string>("");
+
+  const workerOptions = useMemo(() => {
+    const set = new Set<string>(activeWorkers);
+    if (workerName && workerName.trim()) set.add(workerName.trim());
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "vi"));
+  }, [activeWorkers, workerName]);
+
+  const qcOptions = useMemo(() => {
+    const set = new Set<string>(activeQCs);
+    if (qcName && qcName.trim()) set.add(qcName.trim());
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "vi"));
+  }, [activeQCs, qcName]);
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false);
@@ -802,7 +816,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                         <span>{workerName || "-- Chọn người làm --"}</span>
                       </SelectTrigger>
                       <SelectContent className="max-h-56">
-                        {availableWorkers.map((w) => (
+                        {workerOptions.map((w) => (
                           <SelectItem key={w} value={w} className="text-xs sm:text-sm font-bold">
                             {w}
                           </SelectItem>
@@ -822,7 +836,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                         <span>{qcName || "-- Chọn QC --"}</span>
                       </SelectTrigger>
                       <SelectContent className="max-h-56">
-                        {availableQCs.map((q) => (
+                        {qcOptions.map((q) => (
                           <SelectItem key={q} value={q} className="text-xs sm:text-sm font-bold">
                             {q}
                           </SelectItem>

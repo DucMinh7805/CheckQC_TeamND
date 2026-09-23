@@ -68,6 +68,8 @@ interface AppContextType {
   availableMonths: string[];
   availableWorkers: string[];
   availableQCs: string[];
+  activeWorkers: string[];
+  activeQCs: string[];
   filteredTasks: TaskItem[];
   tabCounts: TabCounts;
   stats: DashboardStats;
@@ -448,11 +450,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return sortMonthsChronological(allUnique);
   }, [appData, monthlyAssignments]);
 
+  // Danh sách nhân sự đang hoạt động thực tế trong tab Nhân viên (dành cho Form tạo/gán việc mới)
+  const activeWorkers = useMemo(() => {
+    return Array.from(new Set(listUsers.map((u) => cleanStr(u.name)).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b, "vi")
+    );
+  }, [listUsers]);
+
+  const activeQCs = useMemo(() => {
+    return Array.from(
+      new Set(
+        listUsers
+          .filter((u) => cleanStr(u.role).toUpperCase() === "QC" || cleanStr(u.role).toUpperCase() === "ADMIN")
+          .map((u) => cleanStr(u.name))
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b, "vi"));
+  }, [listUsers]);
+
   const availableWorkers = useMemo(() => {
     const usersNames = listUsers.map((u) => cleanStr(u.name)).filter(Boolean);
     const dataNames = appData.map((t) => cleanStr(getVal(t, "Ai làm"))).filter(Boolean);
     const allUnique = Array.from(new Set([...usersNames, ...dataNames]));
-    return allUnique.sort();
+    return allUnique.sort((a, b) => a.localeCompare(b, "vi"));
   }, [listUsers, appData]);
 
   const availableQCs = useMemo(() => {
@@ -461,7 +481,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .map((u) => cleanStr(u.name));
     const qcsFromData = appData.map((t) => cleanStr(getVal(t, "QC"))).filter(Boolean);
     const allUnique = Array.from(new Set([...qcsFromUsers, ...qcsFromData]));
-    return allUnique.sort();
+    return allUnique.sort((a, b) => a.localeCompare(b, "vi"));
   }, [listUsers, appData]);
 
   const effectiveRole = useMemo(() => {
@@ -761,6 +781,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         availableMonths,
         availableWorkers,
         availableQCs,
+        activeWorkers,
+        activeQCs,
         filteredTasks,
         tabCounts,
         stats,

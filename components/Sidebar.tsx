@@ -115,7 +115,7 @@ export const Sidebar: React.FC<{ inDrawer?: boolean; onCloseDrawer?: () => void 
   };
 
   return (
-    <aside className={`w-full ${inDrawer ? "" : "hidden lg:flex lg:w-80 flex-shrink-0 lg:sticky lg:top-4 h-fit lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto scrollbar-none flex-col gap-4 animate-in fade-in slide-in-from-left-4 duration-300 z-20"}`} aria-label="Thanh điều hướng và bộ lọc">
+    <aside className={`w-full ${inDrawer ? "" : "hidden lg:flex lg:w-80 flex-shrink-0 self-start lg:sticky lg:top-4 h-fit lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 flex-col gap-4 animate-in fade-in slide-in-from-left-4 duration-300 z-20"}`} aria-label="Thanh điều hướng và bộ lọc">
       <div className={`bg-white dark:bg-slate-900 ${inDrawer ? "p-4" : "rounded-3xl p-4 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md"} transition-all space-y-4 sm:space-y-5`}>
         {/* Brand Header & Notification + Dark Mode Toggle (Hiện trên Desktop, trên Mobile đã có Sticky Header) */}
         <div className="hidden lg:flex items-center justify-between">

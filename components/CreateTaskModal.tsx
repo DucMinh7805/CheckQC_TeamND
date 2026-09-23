@@ -48,8 +48,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     currentUser,
     listUsers,
     availableMonths,
-    availableWorkers,
-    availableQCs,
+    activeWorkers,
+    activeQCs,
     selectedMonth,
     createNewTask,
   } = useApp();
@@ -358,7 +358,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                       <span>{workerName || "-- Chọn người làm --"}</span>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl max-h-56">
-                      {availableWorkers.map((name) => (
+                      {activeWorkers.map((name) => (
                         <SelectItem key={name} value={name} className="font-semibold text-xs sm:text-sm py-2">
                           {name}
                         </SelectItem>
@@ -377,7 +377,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                       <span>{qcName || "-- Chọn QC phụ trách --"}</span>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl max-h-56">
-                      {availableQCs.map((name) => (
+                      {activeQCs.map((name) => (
                         <SelectItem key={name} value={name} className="font-semibold text-xs sm:text-sm py-2">
                           {name}
                         </SelectItem>

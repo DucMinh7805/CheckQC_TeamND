@@ -151,7 +151,7 @@ export default function HomePage() {
   else if (themeAccent === "amber") accentBorderClass = "accent-amber";
 
   return (
-    <div className={`min-h-screen w-full max-w-full overflow-x-clip bg-[#f4f7fb] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200 relative ${accentBorderClass}`}>
+    <div className={`min-h-screen w-full max-w-full bg-[#f4f7fb] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200 relative ${accentBorderClass}`}>
       {/* THANH TOP BAR CỐ ĐỊNH RIÊNG CHO ĐIỆN THOẠI (Mobile Sticky Navigation) */}
       <header className="lg:hidden sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 py-2.5 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-2 min-w-0">
