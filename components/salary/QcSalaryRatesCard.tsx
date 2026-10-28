@@ -15,6 +15,7 @@ import { CheckCircle2, AlertOctagon, ShieldCheck, Check } from "lucide-react";
 interface QcSalaryRatesCardProps {
   totalQcCount: number;
   totalDoneQuestions: number;
+  sourceMonthLabel: string;
   totalErrors: number;
   ratePerQuestion: number;
   ratePerError: number;
@@ -27,6 +28,7 @@ interface QcSalaryRatesCardProps {
 export const QcSalaryRatesCard: React.FC<QcSalaryRatesCardProps> = ({
   totalQcCount,
   totalDoneQuestions,
+  sourceMonthLabel,
   totalErrors,
   ratePerQuestion,
   ratePerError,
@@ -89,6 +91,10 @@ export const QcSalaryRatesCard: React.FC<QcSalaryRatesCardProps> = ({
               </div>
             </div>
           )}
+
+          <p className="text-[10px] font-bold text-emerald-700/80 dark:text-emerald-300/80 pt-1 border-t border-emerald-100 dark:border-emerald-900/40">
+            Số câu theo tab/kỳ: {sourceMonthLabel}
+          </p>
         </div>
 
         {/* Thẻ 3: TỔNG SỐ LỖI ĐÃ CHECK + Đơn giá lỗi */}

@@ -10,7 +10,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { User, MonthlyAssignmentItem } from "@/types";
-import { cleanStr, normalizeMonthStr } from "@/lib/helpers";
+import { classifyNdWork, cleanStr, normalizeMonthStr } from "@/lib/helpers";
 import {
   Calendar,
   MoveHorizontal,
@@ -31,22 +31,24 @@ const DEFAULT_RATES: NdRates = {
 };
 
 export const KpiTable: React.FC = () => {
-  const { monthlyAssignments, listUsers, loadData, isLoading, appConfig, saveConfigToServer } = useApp();
+  const { monthlyAssignments, listUsers, loadData, isLoading, appConfig, saveConfigToServer, selectedMonth } = useApp();
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   const availableMonths = useMemo(() => {
     return Object.keys(monthlyAssignments || {});
   }, [monthlyAssignments]);
 
+  // Mỗi lần mở bảng, ưu tiên tháng đang lọc ở dashboard. Người dùng vẫn có thể
+  // đổi tháng ngay trong bảng mà không bị đồng bộ nền tự động đổi lại.
   const [selectedKpiMonth, setSelectedKpiMonth] = useState<string>(
-    availableMonths[0] || "ALL"
+    selectedMonth || availableMonths[0] || "ALL"
   );
 
+  // KpiTable luôn được mount cùng dashboard. Khi dữ liệu/tháng dashboard vừa
+  // tải xong, phải nhận tháng đó thay vì giữ lại tháng mặc định đầu tiên.
   useEffect(() => {
-    if (selectedKpiMonth === "ALL" && availableMonths.length > 0) {
-      setSelectedKpiMonth(availableMonths[0]);
-    }
-  }, [availableMonths]);
+    if (selectedMonth) setSelectedKpiMonth(selectedMonth);
+  }, [selectedMonth]);
 
   const [sortField, setSortField] = useState<NdSortField | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -140,10 +142,6 @@ export const KpiTable: React.FC = () => {
       const workerName = cleanStr(workerNameRaw).toLowerCase();
       if (!workerName) return;
 
-      const note = cleanStr(task.note || "").toLowerCase();
-      const leaderCheck = cleanStr(task.leader_check || "").toLowerCase();
-      const title = cleanStr(task.task_title || "").toLowerCase();
-
       const soCau =
         typeof task.so_cau === "number"
           ? task.so_cau
@@ -164,57 +162,11 @@ export const KpiTable: React.FC = () => {
         };
       }
 
-      const isUrgent =
-        /t[ốổo]i\s*kh[ẩa]n/i.test(leaderCheck) ||
-        /t[ốổo]i\s*kh[ẩa]n/i.test(note);
-
-      const isAiKhan =
-        /ai\s*kh[ẩa]n/i.test(note) ||
-        /ai\s*kh[ẩa]n/i.test(leaderCheck);
-
-      const isCopy =
-        leaderCheck.includes("copy") ||
-        note.includes("copy") ||
-        title.includes("copy");
-
-      const isThucHanh =
-        title.includes("thực hành") ||
-        title.includes("thuc hanh") ||
-        leaderCheck.includes("thực hành") ||
-        note.includes("thực hành");
-
-      const isAi =
-        leaderCheck.includes("ai") ||
-        note.includes("ai") ||
-        title.includes("ai");
-
-      const isGiaiThich =
-        leaderCheck.includes("giải thích") ||
-        leaderCheck.includes("gt") ||
-        note.includes("giải thích") ||
-        note.includes("gt") ||
-        title.includes("giải thích") ||
-        title.includes("gt");
-
-      if (leaderCheck.includes("copy")) {
-        dataMap[workerName].mcqCopy += soCau;
-      } else if (isAiKhan) {
-        dataMap[workerName].mcqGo += soCau;
-      } else if (isUrgent) {
-        dataMap[workerName].deToiKhan += soCau;
-      } else if (isGiaiThich && isCopy) {
-        dataMap[workerName].copyGt += soCau;
-      } else if (isGiaiThich && !isCopy) {
-        dataMap[workerName].goGt += soCau;
-      } else if (isThucHanh) {
-        dataMap[workerName].th += soCau;
-      } else if (isCopy) {
-        dataMap[workerName].mcqCopy += soCau;
-      } else if (isAi) {
-        dataMap[workerName].aiCreate += soCau;
-      } else {
-        dataMap[workerName].mcqGo += soCau;
-      }
+      const category = classifyNdWork({
+        note: task.note,
+        leaderCheck: task.leader_check,
+      });
+      dataMap[workerName][category] += soCau;
     });
 
     const result = Object.values(dataMap).map((row) => {

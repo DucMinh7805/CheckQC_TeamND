@@ -17,7 +17,7 @@ import { useApp } from "@/context/AppContext";
 import { FileCheck, Hash, CheckCircle2, Percent } from "lucide-react";
 
 export const TeamSummaryKpiCards: React.FC = () => {
-  const { teamQuestionTotals, availableAssignmentMonths } = useApp();
+  const { teamQuestionTotals, availableAssignmentMonths, selectedAssignmentMonth } = useApp();
 
   if (availableAssignmentMonths.length === 0) return null;
 
@@ -66,6 +66,9 @@ export const TeamSummaryKpiCards: React.FC = () => {
         <p className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
           {totalChecked.toLocaleString("vi-VN")}{" "}
           <span className="text-xs font-bold text-emerald-400">câu</span>
+        </p>
+        <p className="mt-1 border-t border-emerald-100 pt-1 text-[10px] font-bold text-emerald-700/80 dark:border-emerald-900/40 dark:text-emerald-300/80">
+          Theo tab/kỳ: {selectedAssignmentMonth || "Chưa chọn tháng"}
         </p>
       </div>
 

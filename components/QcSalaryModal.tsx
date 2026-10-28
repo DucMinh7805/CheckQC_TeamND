@@ -12,6 +12,7 @@ import { useApp } from "@/context/AppContext";
 import { User, MonthlyAssignmentItem, TaskItem, QcSalaryStatItem } from "@/types";
 import {
   cleanStr,
+  getQcTaskIdentity,
   getVal,
   normalizeMonthStr,
   parseQcErrorCount,
@@ -51,9 +52,9 @@ export const QcSalaryModal: React.FC<QcSalaryModalProps> = ({
     saveConfigToServer,
   } = useApp();
 
-  const [selectedMonth, setSelectedMonth] = useState<string>(
-    selectedAssignmentMonth || (availableAssignmentMonths[0] || "ALL")
-  );
+  // Khởi tạo một lần từ bộ lọc dashboard. Sau đó giữ lựa chọn riêng của bảng
+  // lương để mỗi lần đồng bộ dữ liệu không tự nhảy về tháng dashboard.
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [sortField, setSortField] = useState<QcSortField | null>("totalSalary");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -83,10 +84,10 @@ export const QcSalaryModal: React.FC<QcSalaryModalProps> = ({
   }, [appConfig]);
 
   useEffect(() => {
-    if (selectedAssignmentMonth && availableAssignmentMonths.includes(selectedAssignmentMonth)) {
+    if (!selectedMonth && selectedAssignmentMonth) {
       setSelectedMonth(selectedAssignmentMonth);
     }
-  }, [selectedAssignmentMonth, availableAssignmentMonths]);
+  }, [selectedMonth, selectedAssignmentMonth]);
 
   const handleSaveRates = async () => {
     try {
@@ -113,7 +114,8 @@ export const QcSalaryModal: React.FC<QcSalaryModalProps> = ({
     }
   };
 
-  // Danh sách các tháng có sẵn (kết hợp Sheet ND và các tháng phụ trong Sheet QC)
+  // Kỳ phụ như 8.1/2026 vẫn hiển thị để đối chiếu đề tồn; cùng dữ liệu đó
+  // được helper cộng vào lương tháng kế tiếp.
   const allAvailableSalaryMonths = useMemo(() => {
     const monthsSet = new Set<string>(availableAssignmentMonths);
     appData.forEach((item) => {
@@ -147,70 +149,120 @@ export const QcSalaryModal: React.FC<QcSalaryModalProps> = ({
       };
     });
 
-    // 1. Tạo Lookup Map Tên Đề -> Số câu từ Sheet ND để lấy số câu nếu Sheet QC để trống
+    // 1. Tạo Lookup Map khóa đề -> Số câu từ Sheet ND để lấy số câu nếu Sheet QC để trống.
+    // Không dùng tên đề đơn thuần vì cùng tên có thể xuất hiện ở nhiều dòng.
     const s2Lookup = new Map<string, number>();
-    Object.values(monthlyAssignments || {}).forEach((arr) => {
+    const s2FallbackLookup = new Map<string, number | null>();
+    const getFallbackLookupKey = (month: unknown, worker: unknown, title: unknown) =>
+      `${normalizeMonthStr(cleanStr(month))}:${cleanStr(worker).toLowerCase()}:${cleanStr(title).toLowerCase()}`;
+    Object.entries(monthlyAssignments || {}).forEach(([tabMonthName, arr]) => {
       if (Array.isArray(arr)) {
         arr.forEach((t) => {
-          const k = cleanStr(t.task_title).toLowerCase();
+          const k = getQcTaskIdentity({
+            linkDe: t.link_de,
+            linkSp: t.link_sp,
+            month: t.month || tabMonthName,
+            worker: t.worker_name,
+            title: t.task_title,
+            questions: t.so_cau,
+          });
           if (k && !s2Lookup.has(k) && t.so_cau) {
             s2Lookup.set(k, t.so_cau);
           }
+          const fallbackKey = getFallbackLookupKey(t.month || tabMonthName, t.worker_name, t.task_title);
+          const existing = s2FallbackLookup.get(fallbackKey);
+          if (existing === undefined) s2FallbackLookup.set(fallbackKey, t.so_cau || 0);
+          else if (existing !== t.so_cau) s2FallbackLookup.set(fallbackKey, null);
         });
       }
     });
 
-    // Map lưu các đề duy nhất của từng QC (key = qcNameKey, value = Map<titleKey, taskInfo>)
-    const qcUniqueTasksMap: Record<string, Map<string, { title: string; so_cau: number; isDone: boolean; hasErrors: boolean }>> = {};
+    // Map lưu các đề duy nhất của từng QC (khóa ưu tiên link đề/link SP, không phải tên đề)
+    const qcUniqueTasksMap: Record<string, Map<string, {
+      title: string;
+      so_cau: number;
+      isDone: boolean;
+      hasErrors: boolean;
+      totalErrors: number;
+    }>> = {};
     qcUsers.forEach((u) => {
       qcUniqueTasksMap[cleanStr(u.name).toLowerCase()] = new Map();
     });
+    // Một số đề cũ có Link sản phẩm khác nhau giữa ND và QC. Chỉ trong trường
+    // hợp đó, dùng QC + tên đề + số câu làm khóa phụ để tránh cộng đôi cùng đề.
+    const contentTaskKeys: Record<string, Map<string, string>> = {};
+    const getContentKey = (title: unknown, questions: unknown) =>
+      `${cleanStr(title).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ")}:${Number(questions) || 0}`;
+    const resolveTaskKey = (qcKey: string, preferredKey: string, title: unknown, questions: unknown) => {
+      const contentKey = getContentKey(title, questions);
+      const contentMap = contentTaskKeys[qcKey] || (contentTaskKeys[qcKey] = new Map());
+      return contentMap.get(contentKey) || preferredKey;
+    };
+    const rememberTaskKey = (qcKey: string, taskKey: string, title: unknown, questions: unknown) => {
+      const contentKey = getContentKey(title, questions);
+      (contentTaskKeys[qcKey] || (contentTaskKeys[qcKey] = new Map())).set(contentKey, taskKey);
+    };
 
-    // Bước 1: Quét Sheet 2 (ND) - Lấy các đề đã Done (qc_done === true)
+    // Lương QC: nguồn chính là các đề đã QC done ở Sheet ND trong kỳ lương.
+    // isTaskInQcSalaryMonth giữ quy tắc chuyển đề tồn sang đúng kỳ được ghi
+    // trong Note/Leader Check. Sheet QC được quét sau để ghép lỗi và không
+    // được tạo thêm bản sao của cùng đề (khóa ưu tiên Link sản phẩm).
     Object.entries(monthlyAssignments || {}).forEach(([tabMonthName, tasksArr]) => {
       if (!Array.isArray(tasksArr)) return;
 
       tasksArr.forEach((t: MonthlyAssignmentItem) => {
         const qcRaw = cleanStr(t.qc_name);
-        if (!qcRaw) return;
+        if (!qcRaw || !isQcDone(t.qc_done)) return;
+        if (!isTaskInQcSalaryMonth(t.month || tabMonthName, t.note, t.leader_check, selectedMonth)) return;
+
         const key = qcRaw.toLowerCase();
-
-        // Kiểm tra đề thuộc tháng được chọn (xử lý cả đề tồn T8 sang T9...)
-        const isMatch = isTaskInQcSalaryMonth(
-          t.month || tabMonthName,
-          t.note,
-          t.leader_check,
-          selectedMonth
-        );
-        if (!isMatch) return;
-
-        if (!qcUniqueTasksMap[key]) {
-          qcUniqueTasksMap[key] = new Map();
+        if (!dataMap[key]) {
+          dataMap[key] = {
+            qcName: qcRaw, role: "QC", doneTasksCount: 0, doneQuestionsCount: 0,
+            totalErrorsChecked: 0, totalSalary: 0, tasksList: [],
+          };
         }
+        if (!qcUniqueTasksMap[key]) qcUniqueTasksMap[key] = new Map();
 
-        const isDone = isQcDone(t.qc_done);
-        if (isDone) {
-          const titleKey = cleanStr(t.task_title).toLowerCase();
-          qcUniqueTasksMap[key].set(titleKey, {
+        const preferredTaskKey = getQcTaskIdentity({
+          linkDe: t.link_de,
+          linkSp: t.link_sp,
+          month: t.month || tabMonthName,
+          worker: t.worker_name,
+          title: t.task_title,
+          questions: t.so_cau,
+        });
+        const taskKey = resolveTaskKey(key, preferredTaskKey, t.task_title, t.so_cau);
+        const existing = qcUniqueTasksMap[key].get(taskKey);
+        if (existing) {
+          if (existing.so_cau === 0 && t.so_cau) existing.so_cau = t.so_cau;
+          existing.isDone = true;
+        } else {
+          qcUniqueTasksMap[key].set(taskKey, {
             title: t.task_title,
             so_cau: t.so_cau || 0,
             isDone: true,
             hasErrors: false,
+            totalErrors: 0,
           });
         }
+        rememberTaskKey(key, taskKey, t.task_title, t.so_cau);
       });
     });
 
-    // Bước 2: Quét Sheet 1 (QC) - Lấy các đề QC đã check (có Done hoặc có báo lỗi)
+    // Sheet QC là nguồn lỗi, đồng thời giữ các đề tồn/đề cũ không còn dòng ND.
     appData.forEach((task: TaskItem) => {
       const qcRaw = cleanStr(getVal(task, "QC"));
       if (!qcRaw) return;
       const key = qcRaw.toLowerCase();
 
       const itemMonth = getVal(task, "ID/ tháng") || getVal(task, "ID/tháng");
-      const itemNote = getVal(task, "Note");
-
-      const isMatch = isTaskInQcSalaryMonth(itemMonth, itemNote, "", selectedMonth);
+      const isMatch = isTaskInQcSalaryMonth(
+        itemMonth,
+        getVal(task, "Note"),
+        getVal(task, "Leader check") || getVal(task, "Leader check "),
+        selectedMonth
+      );
       if (!isMatch) return;
 
       if (!dataMap[key]) {
@@ -233,45 +285,60 @@ export const QcSalaryModal: React.FC<QcSalaryModalProps> = ({
       const e2 = parseQcErrorCount(getVal(task, "Lỗi lần 2"));
       const e3 = parseQcErrorCount(getVal(task, "Lỗi lần 3"));
       const totalItemErrors = e1 + e2 + e3;
-      dataMap[key].totalErrorsChecked += totalItemErrors;
-
       const rawLoi1 = cleanStr(getVal(task, "Lỗi lần 1"));
       const rawLoi2 = cleanStr(getVal(task, "Lỗi lần 2"));
       const rawLoi3 = cleanStr(getVal(task, "Lỗi lần 3"));
       const isDoneSheet1 = isQcDone(getVal(task, "QC done"));
       const hasErrorReport = totalItemErrors > 0 || rawLoi1 !== "" || rawLoi2 !== "" || rawLoi3 !== "";
-      const hasActivity = isDoneSheet1 || hasErrorReport;
 
-      if (hasActivity) {
+      if (isDoneSheet1) {
         const rawTitle = cleanStr(getVal(task, "Tên đề"));
-        const titleKey = rawTitle.toLowerCase();
 
         let soCauNum = typeof task["Số câu"] === "number"
           ? task["Số câu"]
           : parseInt(String(task["Số câu"] || "").replace(/\D/g, ""), 10) || 0;
 
         // Nếu Sheet 1 chưa điền số câu, lấy số câu tương ứng từ Sheet ND
-        if (soCauNum === 0 && s2Lookup.has(titleKey)) {
-          soCauNum = s2Lookup.get(titleKey) || 0;
+        const preferredTaskKey = getQcTaskIdentity({
+          linkDe: getVal(task, "Link đề"),
+          linkSp: getVal(task, "Link sản phẩm"),
+          month: itemMonth,
+          worker: getVal(task, "Ai làm"),
+          title: rawTitle,
+          questions: soCauNum,
+        });
+
+        if (soCauNum === 0) {
+          const exactQuestions = s2Lookup.get(preferredTaskKey);
+          const fallbackQuestions = s2FallbackLookup.get(
+            getFallbackLookupKey(itemMonth, getVal(task, "Ai làm"), rawTitle)
+          );
+          soCauNum = exactQuestions || fallbackQuestions || 0;
         }
 
-        // Khử trùng lặp: nếu đề đã có từ Sheet ND thì cập nhật số câu và trạng thái
-        if (qcUniqueTasksMap[key].has(titleKey)) {
-          const existing = qcUniqueTasksMap[key].get(titleKey)!;
-          if (existing.so_cau === 0 && soCauNum > 0) {
+        const taskKey = resolveTaskKey(key, preferredTaskKey, rawTitle, soCauNum);
+
+        // Khử trùng lặp: chỉ gộp đúng cùng một đề qua khóa ổn định.
+        if (qcUniqueTasksMap[key].has(taskKey)) {
+          const existing = qcUniqueTasksMap[key].get(taskKey)!;
+          // Ưu tiên số câu thực tế từ Sheet QC nếu > 0; nếu Sheet QC để trống thì giữ nguyên số câu từ Sheet ND
+          if (soCauNum > 0) {
             existing.so_cau = soCauNum;
           }
-          if (isDoneSheet1) existing.isDone = true;
+          existing.isDone = true;
           if (hasErrorReport) existing.hasErrors = true;
+          existing.totalErrors = Math.max(existing.totalErrors, totalItemErrors);
         } else {
           // Thêm đề mới từ Sheet QC
-          qcUniqueTasksMap[key].set(titleKey, {
+          qcUniqueTasksMap[key].set(taskKey, {
             title: rawTitle,
             so_cau: soCauNum,
             isDone: isDoneSheet1,
             hasErrors: hasErrorReport,
+            totalErrors: totalItemErrors,
           });
         }
+        rememberTaskKey(key, taskKey, rawTitle, soCauNum);
       }
     });
 
@@ -279,12 +346,19 @@ export const QcSalaryModal: React.FC<QcSalaryModalProps> = ({
     Object.keys(qcUniqueTasksMap).forEach((qcKey) => {
       if (!dataMap[qcKey]) return;
       const tasksMap = qcUniqueTasksMap[qcKey];
-      dataMap[qcKey].doneTasksCount = tasksMap.size;
+      let doneTasks = 0;
       let qCount = 0;
+      let errorCount = 0;
       tasksMap.forEach((t) => {
-        qCount += t.so_cau;
+        if (t.isDone) {
+          doneTasks += 1;
+          qCount += t.so_cau;
+        }
+        errorCount += t.totalErrors;
       });
+      dataMap[qcKey].doneTasksCount = doneTasks;
       dataMap[qcKey].doneQuestionsCount = qCount;
+      dataMap[qcKey].totalErrorsChecked = errorCount;
     });
 
     // 4. Tính Tổng tiền = (Số câu * Giá câu) + (Số lỗi * Giá lỗi)
@@ -444,6 +518,7 @@ export const QcSalaryModal: React.FC<QcSalaryModalProps> = ({
           <QcSalaryRatesCard
             totalQcCount={salaryData.length}
             totalDoneQuestions={totals.doneQuestions}
+            sourceMonthLabel={selectedMonth === "ALL" ? "Tất cả các tháng" : selectedMonth}
             totalErrors={totals.totalErrors}
             ratePerQuestion={ratePerQuestion}
             ratePerError={ratePerError}

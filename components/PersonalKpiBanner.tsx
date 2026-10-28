@@ -10,7 +10,7 @@
 
 import React, { useMemo } from "react";
 import { useApp } from "@/context/AppContext";
-import { cleanStr, getVal, normalizeMonthStr, isTaskInQcSalaryMonth, parseQcErrorCount, isQcDone } from "@/lib/helpers";
+import { classifyNdWork, cleanStr, getQcTaskIdentity, getVal, normalizeMonthStr, parseQcErrorCount, isQcDone } from "@/lib/helpers";
 import { MonthlyAssignmentItem, TaskItem } from "@/types";
 import {
   FileText,
@@ -63,66 +63,22 @@ export const PersonalKpiBanner: React.FC = () => {
     let goGt = 0;
 
     myNdTasks.forEach((task) => {
-      const note = cleanStr(task.note || "").toLowerCase();
-      const leaderCheck = cleanStr(task.leader_check || "").toLowerCase();
-      const title = cleanStr(task.task_title || "").toLowerCase();
-
       const soCau =
         typeof task.so_cau === "number"
           ? task.so_cau
           : parseInt(String(task.so_cau), 10) || 0;
 
-      const isUrgent =
-        /t[ốổo]i\s*kh[ẩa]n/i.test(leaderCheck) ||
-        /t[ốổo]i\s*kh[ẩa]n/i.test(note);
-
-      const isAiKhan =
-        /ai\s*kh[ẩa]n/i.test(note) ||
-        /ai\s*kh[ẩa]n/i.test(leaderCheck);
-
-      const isCopy =
-        leaderCheck.includes("copy") ||
-        note.includes("copy") ||
-        title.includes("copy");
-
-      const isThucHanh =
-        title.includes("thực hành") ||
-        title.includes("thuc hanh") ||
-        leaderCheck.includes("thực hành") ||
-        note.includes("thực hành");
-
-      const isAi =
-        leaderCheck.includes("ai") ||
-        note.includes("ai") ||
-        title.includes("ai");
-
-      const isGiaiThich =
-        leaderCheck.includes("giải thích") ||
-        leaderCheck.includes("gt") ||
-        note.includes("giải thích") ||
-        note.includes("gt") ||
-        title.includes("giải thích") ||
-        title.includes("gt");
-
-      if (leaderCheck.includes("copy")) {
-        mcqCopy += soCau;
-      } else if (isAiKhan) {
-        mcqGo += soCau;
-      } else if (isUrgent) {
-        deToiKhan += soCau;
-      } else if (isGiaiThich && isCopy) {
-        copyGt += soCau;
-      } else if (isGiaiThich && !isCopy) {
-        goGt += soCau;
-      } else if (isThucHanh) {
-        th += soCau;
-      } else if (isCopy) {
-        mcqCopy += soCau;
-      } else if (isAi) {
-        aiCreate += soCau;
-      } else {
-        mcqGo += soCau;
-      }
+      const category = classifyNdWork({
+        note: task.note,
+        leaderCheck: task.leader_check,
+      });
+      if (category === "mcqCopy") mcqCopy += soCau;
+      else if (category === "mcqGo") mcqGo += soCau;
+      else if (category === "deToiKhan") deToiKhan += soCau;
+      else if (category === "th") th += soCau;
+      else if (category === "aiCreate") aiCreate += soCau;
+      else if (category === "copyGt") copyGt += soCau;
+      else goGt += soCau;
     });
 
     const totalQuestions = mcqCopy + mcqGo + deToiKhan + th + aiCreate + copyGt + goGt;
@@ -144,65 +100,65 @@ export const PersonalKpiBanner: React.FC = () => {
   const qcStats = useMemo(() => {
     if (!currentUser || (userRole !== "QC" && userRole !== "ADMIN")) return null;
 
-    // Lookup tên đề sang số câu
-    const s2Lookup = new Map<string, number>();
-    Object.values(monthlyAssignments || {}).forEach((arr) => {
-      if (Array.isArray(arr)) {
-        arr.forEach((t) => {
-          const k = cleanStr(t.task_title).toLowerCase();
-          if (k && !s2Lookup.has(k) && t.so_cau) s2Lookup.set(k, t.so_cau);
-        });
-      }
-    });
+    const selectedNorm = normalizeMonthStr(selectedMonth);
+    const ndByIdentity = new Map<string, { done: boolean; soCau: number }>();
 
-    const myQcTasksMap = new Map<string, { title: string; so_cau: number }>();
-
-    // Quét Sheet 2
+    // Sheet ND chỉ xác nhận trạng thái done và bổ sung số câu cho đúng đề.
     Object.entries(monthlyAssignments || {}).forEach(([tabName, tasksArr]) => {
       if (!Array.isArray(tasksArr)) return;
       tasksArr.forEach((t) => {
         if (cleanStr(t.qc_name).toLowerCase() !== currentUserName) return;
-        if (!isTaskInQcSalaryMonth(t.month || tabName, t.note, t.leader_check, selectedMonth)) return;
-        if (isQcDone(t.qc_done)) {
-          const k = cleanStr(t.task_title).toLowerCase();
-          myQcTasksMap.set(k, { title: t.task_title, so_cau: t.so_cau || 0 });
-        }
+        if (selectedMonth !== "ALL" && normalizeMonthStr(t.month || tabName) !== selectedNorm) return;
+        const key = getQcTaskIdentity({
+          linkDe: t.link_de, linkSp: t.link_sp, month: t.month || tabName,
+          worker: t.worker_name, title: t.task_title, questions: t.so_cau,
+        });
+        const existing = ndByIdentity.get(key);
+        ndByIdentity.set(key, {
+          done: Boolean(existing?.done || isQcDone(t.qc_done)),
+          soCau: existing?.soCau || t.so_cau || 0,
+        });
       });
     });
 
-    // Quét Sheet 1
-    let totalErrors = 0;
+    const myQcTasksMap = new Map<string, { title: string; so_cau: number; totalErrors: number }>();
+
+    // Năng suất lấy Sheet QC làm danh sách đề. Một đề được tính khi QC done
+    // ở Sheet QC hoặc đúng đề đó đã QC done ở Sheet ND trong cùng kỳ.
     appData.forEach((task: TaskItem) => {
       if (cleanStr(getVal(task, "QC")).toLowerCase() !== currentUserName) return;
       const itemMonth = getVal(task, "ID/ tháng") || getVal(task, "ID/tháng");
-      if (!isTaskInQcSalaryMonth(itemMonth, getVal(task, "Note"), "", selectedMonth)) return;
+      if (selectedMonth !== "ALL" && normalizeMonthStr(itemMonth) !== selectedNorm) return;
 
-      const e1 = parseQcErrorCount(getVal(task, "Lỗi lần 1"));
-      const e2 = parseQcErrorCount(getVal(task, "Lỗi lần 2"));
-      const e3 = parseQcErrorCount(getVal(task, "Lỗi lần 3"));
-      totalErrors += (e1 + e2 + e3);
+      const rawTitle = cleanStr(getVal(task, "Tên đề"));
+      let soCau = typeof task["Số câu"] === "number"
+        ? task["Số câu"]
+        : parseInt(String(task["Số câu"] || "").replace(/\D/g, ""), 10) || 0;
+      const key = getQcTaskIdentity({
+        linkDe: getVal(task, "Link đề"), linkSp: getVal(task, "Link sản phẩm"),
+        month: itemMonth, worker: getVal(task, "Ai làm"), title: rawTitle, questions: soCau,
+      });
+      const ndMatch = ndByIdentity.get(key);
+      if (!isQcDone(getVal(task, "QC done")) && !ndMatch?.done) return;
 
-      const isDone = isQcDone(getVal(task, "QC done"));
-      const hasErrors = (e1 + e2 + e3) > 0 || cleanStr(getVal(task, "Lỗi lần 1")) !== "" || cleanStr(getVal(task, "Lỗi lần 2")) !== "" || cleanStr(getVal(task, "Lỗi lần 3")) !== "";
-
-      if (isDone || hasErrors) {
-        const rawTitle = cleanStr(getVal(task, "Tên đề"));
-        const k = rawTitle.toLowerCase();
-        let sc = typeof task["Số câu"] === "number" ? task["Số câu"] : parseInt(String(task["Số câu"] || "").replace(/\D/g, ""), 10) || 0;
-        if (sc === 0 && s2Lookup.has(k)) sc = s2Lookup.get(k) || 0;
-
-        if (myQcTasksMap.has(k)) {
-          const ex = myQcTasksMap.get(k)!;
-          if (ex.so_cau === 0 && sc > 0) ex.so_cau = sc;
-        } else {
-          myQcTasksMap.set(k, { title: rawTitle, so_cau: sc });
-        }
+      if (soCau === 0) soCau = ndMatch?.soCau || 0;
+      const errors = parseQcErrorCount(getVal(task, "Lỗi lần 1")) +
+        parseQcErrorCount(getVal(task, "Lỗi lần 2")) +
+        parseQcErrorCount(getVal(task, "Lỗi lần 3"));
+      const existing = myQcTasksMap.get(key);
+      if (existing) {
+        if (existing.so_cau === 0 && soCau > 0) existing.so_cau = soCau;
+        existing.totalErrors = Math.max(existing.totalErrors, errors);
+      } else {
+        myQcTasksMap.set(key, { title: rawTitle, so_cau: soCau, totalErrors: errors });
       }
     });
 
     let totalCheckedQuestions = 0;
+    let totalErrors = 0;
     myQcTasksMap.forEach((t) => {
       totalCheckedQuestions += t.so_cau;
+      totalErrors += t.totalErrors;
     });
 
     return {

@@ -5,6 +5,83 @@ export const cleanStr = (val: any): string => {
   return String(val).trim();
 };
 
+export type NdWorkCategory =
+  | "mcqCopy"
+  | "mcqGo"
+  | "deToiKhan"
+  | "th"
+  | "aiCreate"
+  | "copyGt"
+  | "goGt";
+
+// Phân loại công việc ND chỉ theo cột K (Note) và L (Leader Check).
+// Tên đề không phải là tiêu chí tính lương. "AI khẩn" là MCQ gõ, không phải
+// AI Create.
+export const classifyNdWork = (input: {
+  note?: unknown;
+  leaderCheck?: unknown;
+}): NdWorkCategory => {
+  const normalise = (value: unknown) => cleanStr(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  const leader = normalise(input.leaderCheck);
+  const note = normalise(input.note);
+  // Cột K/L là nguồn nghiệp vụ chuẩn và duy nhất. Không dùng tên đề để phân
+  // loại lương, kể cả khi K/L trống, để tránh tên đề vô tình đổi loại công việc.
+  const taggedSignals = `${leader}\n${note}`.trim();
+  const signals = taggedSignals;
+  const has = (value: string) => signals.includes(value);
+
+  const isExplanation = has("giai thich") || /(^|\s)gt($|\s)/.test(signals);
+  const isCopy = has("copy");
+  const isManualTyping = has("go tay");
+  const isAiUrgent = /ai\s*khan/.test(signals);
+  const isUrgent = /toi\s*khan/.test(signals);
+  const isPractice = has("thuc hanh");
+  const isAi = has("tao ai") || has("ai create") || /(^|\s)ai($|\s)/.test(signals);
+  const isGptCreate = has("gpt create");
+  const isAiChemistry = isAi && (has("hoa hoc") || has("hoa-hoc"));
+
+  // Theo bảng quy tắc: CopyGT/GõGT có độ ưu tiên cao hơn nhãn Copy thường.
+  if (isGptCreate || isAiChemistry || (isExplanation && isCopy)) return "copyGt";
+  if (isExplanation) return "goGt";
+  if (isManualTyping || isAiUrgent) return "mcqGo";
+  if (isUrgent) return "deToiKhan";
+  if (isPractice) return "th";
+  if (isCopy) return "mcqCopy";
+  if (isAi) return "aiCreate";
+  return "mcqGo";
+};
+
+// Khóa dùng để gộp đúng cùng một đề giữa Sheet ND và Sheet QC. Ưu tiên link
+// vì tên đề có thể lặp lại trong một kỳ. Khi thiếu link, dùng tổ hợp thông tin
+// có đủ tháng, người làm, tên đề và số câu để giảm nguy cơ làm rơi đề trùng tên.
+export const getQcTaskIdentity = (input: {
+  linkDe?: unknown;
+  linkSp?: unknown;
+  month?: unknown;
+  worker?: unknown;
+  title?: unknown;
+  questions?: unknown;
+}): string => {
+  const normalise = (value: unknown) => cleanStr(value).toLowerCase().replace(/\s+/g, " ");
+  const linkSp = normalise(input.linkSp);
+  // Link sản phẩm có ở cả Sheet ND và Sheet QC; ưu tiên nó để một đề từ hai
+  // Sheet luôn có cùng khóa và không bị tính hai lần.
+  if (linkSp) return `sp:${linkSp}`;
+  const linkDe = normalise(input.linkDe);
+  if (linkDe) return `de:${linkDe}`;
+  return [
+    "fallback",
+    normalizeMonthStr(cleanStr(input.month)),
+    normalise(input.worker),
+    normalise(input.title),
+    String(Number(input.questions) || 0),
+  ].join(":");
+};
+
 export const getVal = (item: TaskItem, keyName: string): any => {
   if (!item) return "";
   if (item[keyName] !== undefined) return item[keyName];
@@ -163,7 +240,9 @@ export const normalizeMonthStr = (str: string): string => {
   return cleaned;
 };
 
-// Kiểm tra đề bài có thuộc kỳ tính lương QC được chọn hay không (hỗ trợ đề tồn T8 -> T9, 8.1/2026, Note "Đề tồn T8")
+// Kiểm tra đề có thuộc kỳ lương QC được chọn hay không. Đề tồn được hiển thị
+// ở kỳ phụ để tiện đối chiếu (T8 -> 8.1), đồng thời cộng vào lương tháng kế
+// tiếp (T8 -> T9). Đây là hai góc xem của cùng một tập đề.
 export const isTaskInQcSalaryMonth = (
   originMonthStr: string | null | undefined,
   noteText: string | null | undefined,
@@ -194,29 +273,36 @@ export const isTaskInQcSalaryMonth = (
       if (m) tonMonthNum = parseFloat(m[1]);
     }
 
-    // Nếu xem đúng tháng gốc của đề tồn (ví dụ đang lọc T8 mà đề ghi "Đề tồn T8", hoặc lọc T11 mà đề ghi "Đề tồn T11") -> BỎ QUA không tính lương tháng gốc
-    if (tonMonthNum > 0 && (targetMonthNorm === `${tonMonthNum}/2026` || targetMonthNorm === `${tonMonthNum}/2025` || targetMonthNorm.startsWith(`${tonMonthNum}/`))) {
+    // Nếu note có ghi đích đến cụ thể (ví dụ "tính t9", "lương t9", "tính t12", "lương t12")
+    const explicitMatch = combinedNote.match(/(?:t[íi]nh|l[ươu]ng(?:\s*qc)?|chuy[ểe]n\s*sang)\s*t(?:háng)?\s*(\d{1,2}(?:\.\d{1,2})?)/i);
+    if (explicitMatch && explicitMatch[1]) {
+      const dest = explicitMatch[1];
+      if (targetMonthNorm.startsWith(`${dest}/`)) {
+        return true;
+      }
       return false;
     }
 
-    // Nếu đang lọc tháng sau (T8 -> T9, T11 -> T12, T12 -> T1) hoặc kỳ phụ (8.1, 11.1) -> TÍNH VÀO KỲ NÀY
+    // Đề tồn hiện ở cả kỳ phụ để đối chiếu (8.1) và tháng lương kế tiếp (9).
     const nextMonthNum = tonMonthNum === 12 ? 1 : tonMonthNum + 1;
-    if (
-      targetMonthNorm.startsWith(`${nextMonthNum}/`) ||
-      targetMonthNorm.startsWith(`${tonMonthNum}.1/`) ||
-      targetMonthNorm.includes(`${tonMonthNum}.1`)
-    ) {
+    const originYearMatch = originMonthNorm.match(/\/(\d{4})$/);
+    const targetYearMatch = targetMonthNorm.match(/\/(\d{4})$/);
+    const expectedYear = originYearMatch
+      ? Number(originYearMatch[1]) + (tonMonthNum === 12 ? 1 : 0)
+      : targetYearMatch
+        ? Number(targetYearMatch[1])
+        : undefined;
+    if (targetMonthNorm.startsWith(`${nextMonthNum}/`) &&
+      (!expectedYear || targetMonthNorm.endsWith(`/${expectedYear}`))) {
       return true;
     }
 
-    // Nếu note có ghi đích đến cụ thể (ví dụ "tính t9", "lương t9", "tính t12", "lương t12")
-    const explicitMatch = combinedNote.match(/(?:t[íi]nh|l[ươu]ng\s*(?:qc)?|chuy[ểe]n\s*sang)?\s*t(?:háng)?\s*(\d{1,2}(?:\.\d{1,2})?)/i);
-    if (explicitMatch && explicitMatch[1]) {
-      const dest = explicitMatch[1];
-      if (targetMonthNorm.startsWith(`${dest}/`) || targetMonthNorm.includes(dest)) {
-        return true;
-      }
+    if (targetMonthNorm.startsWith(`${tonMonthNum}.1/`) &&
+      (!originYearMatch || targetMonthNorm.endsWith(`/${originYearMatch[1]}`))) {
+      return true;
     }
+
+    return false;
   }
 
   // Trường hợp bình thường: khớp đúng tháng

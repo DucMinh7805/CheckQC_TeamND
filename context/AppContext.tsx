@@ -43,7 +43,7 @@ import {
   isPending3Days,
   sortMonthsChronological,
   normalizeMonthStr,
-  isTaskInQcSalaryMonth,
+  isQcDone,
 } from "@/lib/helpers";
 import { fetchAppData, postAppData } from "@/lib/api";
 import {
@@ -500,13 +500,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         getVal(item, "ID/ tháng") || getVal(item, "ID/tháng")
       );
       
-      // Hỗ trợ cơ chế đề tồn: Lọc task theo đúng tháng lương (nếu là đề tồn T8 thì hiển thị ở T9)
-      const mMatch = selectedMonthState === "ALL" || isTaskInQcSalaryMonth(
-        idThang, 
-        getVal(item, "Note"), 
-        getVal(item, "Leader check") || getVal(item, "Leader check "), 
-        selectedMonthState
-      );
+      // Báo cáo năng suất theo đúng kỳ được chọn. Đề tồn chỉ xuất hiện khi
+      // chính dòng QC đã được ghi ID/tháng của kỳ đó (ví dụ 8.1/2026), không
+      // tự động kéo đề từ tháng cũ sang tháng mới bằng nội dung Note.
+      const mMatch = selectedMonthState === "ALL" ||
+        idThang === normalizeMonthStr(selectedMonthState);
 
       let uMatch = true;
       if (effectiveRole !== "WORKER") {
@@ -710,7 +708,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const qcNameRaw = t.qc_name || "Chưa phân công";
       const qcName = cleanStr(qcNameRaw) || "Chưa phân công";
       const soCau = typeof t.so_cau === "number" ? t.so_cau : parseInt(String(t.so_cau), 10) || 0;
-      const isDone = t.qc_done === true;
+      // Sheet checkbox có thể về boolean hoặc một trong các giá trị Done nhập tay.
+      // Dùng chung quy tắc với bảng lương để báo cáo tháng không bị mất câu.
+      const isDone = isQcDone(t.qc_done);
 
       totalTasks += 1;
       totalAssignedQuestions += soCau;
