@@ -302,6 +302,22 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     })}
                   </div>
                 )}
+
+                {/* Hướng dẫn chỉ điểm nhập ID đối với Đề tồn */}
+                <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 rounded-xl p-2.5 sm:p-3 text-[11px] text-amber-950 dark:text-amber-200 space-y-1 mt-1 shadow-2xs">
+                  <div className="font-extrabold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Chỉ điểm nhập ID đối với ĐỀ TỒN:</span>
+                  </div>
+                  <div className="text-[10.5px] leading-relaxed text-slate-700 dark:text-slate-300 space-y-1 pl-0.5">
+                    <p>
+                      • <strong>Cách 1 (Chuẩn đề tồn):</strong> Điền ID dạng <code className="bg-amber-100/90 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 px-1 py-0.5 rounded font-mono font-bold">(Tháng này - 1).1</code> (VD: Đề tồn tính lương T11 ➔ chọn <strong>10.1/2026</strong> hoặc điền thẳng <strong>11/2026</strong>).
+                    </p>
+                    <p>
+                      • <strong>Đề tồn nhiều tháng (tồn từ T8, T9...):</strong> Ở cột L (Leader check) / Note bên Sheet ND ghi rõ <strong className="text-blue-700 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/40 px-1 py-0.5 rounded">&quot;Tính T11&quot;</strong> ➔ Web tự động bốc vào tính lương kỳ Tháng 11!
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Dòng 2: Tên bài (dài) + Số câu (kế bên) */}
