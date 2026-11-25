@@ -71,6 +71,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showBacklogHelp, setShowBacklogHelp] = useState<boolean>(true);
 
   // Email của bạn Nội dung được chọn
   const workerObj = useMemo(() => {
@@ -232,14 +233,20 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
               {/* Dòng 1: Tháng (Tự nhập hoặc chọn nhanh) */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <label className="text-[11px] sm:text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-blue-500" />
                     <span>Tháng:</span>
                   </label>
-                  <span className="text-[10px] font-semibold text-slate-500">
-                    (Có thể tự gõ tháng mới hoặc chọn nhanh bên dưới)
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBacklogHelp((prev) => !prev)}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-950/70 dark:hover:bg-amber-900/70 dark:text-amber-300 border border-amber-300/80 dark:border-amber-700 transition-all cursor-pointer shadow-2xs hover:scale-102"
+                    title="Bấm để xem/ẩn hướng dẫn chọn ID đối với đề tồn"
+                  >
+                    <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                    <span>⚠️ Lưu ý ID Đề tồn {showBacklogHelp ? "▲" : "▼"}</span>
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -304,20 +311,32 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 )}
 
                 {/* Hướng dẫn chỉ điểm nhập ID đối với Đề tồn */}
-                <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 rounded-xl p-2.5 sm:p-3 text-[11px] text-amber-950 dark:text-amber-200 space-y-1 mt-1 shadow-2xs">
-                  <div className="font-extrabold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span>Chỉ điểm nhập ID đối với ĐỀ TỒN:</span>
+                {showBacklogHelp && (
+                  <div className="bg-amber-50/95 dark:bg-amber-950/40 border border-amber-300/80 dark:border-amber-800/60 rounded-xl p-2.5 sm:p-3 text-[11px] text-amber-950 dark:text-amber-200 space-y-1.5 mt-1 shadow-xs animate-in fade-in duration-150">
+                    <div className="font-extrabold flex items-center justify-between text-amber-800 dark:text-amber-300">
+                      <div className="flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Chỉ điểm nhập ID đối với ĐỀ TỒN:</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowBacklogHelp(false)}
+                        className="text-[10px] text-amber-700 hover:text-amber-900 font-bold px-1.5 py-0.5 rounded hover:bg-amber-200/60 cursor-pointer"
+                        title="Đóng bảng hướng dẫn"
+                      >
+                        Đóng ✕
+                      </button>
+                    </div>
+                    <div className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-200 space-y-1.5 pl-0.5">
+                      <p>
+                        • <strong>Đối với đề tồn 1 tháng:</strong> ID dạng <code className="bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 px-1.5 py-0.5 rounded font-mono font-bold">(Tháng này - 1).1</code> (VD: Đề tồn tính lương T11 ➔ chọn <strong>10.1/2026</strong>).
+                      </p>
+                      <p>
+                        • <strong>Đề tồn nhiều tháng:</strong> ID dạng <code className="bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-200 px-1.5 py-0.5 rounded font-mono font-bold">(T11/2026, T + tháng hiện tại check)</code>.
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-[10.5px] leading-relaxed text-slate-700 dark:text-slate-300 space-y-1 pl-0.5">
-                    <p>
-                      • <strong>Cách 1 (Chuẩn đề tồn):</strong> Điền ID dạng <code className="bg-amber-100/90 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 px-1 py-0.5 rounded font-mono font-bold">(Tháng này - 1).1</code> (VD: Đề tồn tính lương T11 ➔ chọn <strong>10.1/2026</strong> hoặc điền thẳng <strong>11/2026</strong>).
-                    </p>
-                    <p>
-                      • <strong>Đề tồn nhiều tháng (tồn từ T8, T9...):</strong> Ở cột L (Leader check) / Note bên Sheet ND ghi rõ <strong className="text-blue-700 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/40 px-1 py-0.5 rounded">&quot;Tính T11&quot;</strong> ➔ Web tự động bốc vào tính lương kỳ Tháng 11!
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Dòng 2: Tên bài (dài) + Số câu (kế bên) */}
