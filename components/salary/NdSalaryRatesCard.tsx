@@ -82,7 +82,7 @@ export const NdSalaryRatesCard: React.FC<NdSalaryRatesCardProps> = ({
       </div>
 
       {isEditingRates ? (
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1">
           <div className="space-y-1">
             <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">MCQ copy</label>
             <Input
@@ -143,19 +143,9 @@ export const NdSalaryRatesCard: React.FC<NdSalaryRatesCardProps> = ({
               className="h-8 text-xs font-black bg-white dark:bg-slate-900 border-indigo-300 rounded-xl"
             />
           </div>
-          <div className="space-y-1 col-span-2 sm:col-span-1">
-            <label className="text-[11px] font-black text-teal-700 dark:text-teal-400">Gõ GT</label>
-            <Input
-              type="number"
-              value={rates.goGt || ""}
-              onChange={(e) => onRateChange("goGt", e.target.value)}
-              placeholder="0"
-              className="h-8 text-xs font-black bg-white dark:bg-slate-900 border-teal-300 rounded-xl"
-            />
-          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1">
           <div className="bg-white/80 dark:bg-slate-900/80 p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
             <span className="block text-[10px] font-bold text-slate-500">MCQ Copy</span>
             <span className="text-xs font-black text-slate-800 dark:text-slate-200">
@@ -190,12 +180,6 @@ export const NdSalaryRatesCard: React.FC<NdSalaryRatesCardProps> = ({
             <span className="block text-[10px] font-bold text-indigo-600">CopyGT</span>
             <span className="text-xs font-black text-indigo-700 dark:text-indigo-300">
               {rates.copyGt > 0 ? `${rates.copyGt.toLocaleString("vi-VN")} ₫` : "0 ₫"}
-            </span>
-          </div>
-          <div className="bg-white/80 dark:bg-slate-900/80 p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-center col-span-2 sm:col-span-1">
-            <span className="block text-[10px] font-bold text-teal-600">Gõ GT</span>
-            <span className="text-xs font-black text-teal-700 dark:text-teal-300">
-              {rates.goGt > 0 ? `${rates.goGt.toLocaleString("vi-VN")} ₫` : "0 ₫"}
             </span>
           </div>
         </div>

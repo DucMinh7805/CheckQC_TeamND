@@ -128,13 +128,6 @@ export const NdSalaryTable: React.FC<NdSalaryTableProps> = ({
               {renderSortIcon("copyGt")}
             </th>
             <th
-              onClick={() => onSort("goGt")}
-              className="p-3 sm:p-3.5 text-center border-r border-emerald-200/80 dark:border-emerald-800/80 min-w-[80px] cursor-pointer select-none hover:bg-emerald-200/60 transition"
-            >
-              <span>Gõ GT</span>
-              {renderSortIcon("goGt")}
-            </th>
-            <th
               onClick={() => onSort("total")}
               className="p-3 sm:p-3.5 text-center font-black text-emerald-950 dark:text-emerald-100 bg-emerald-200/90 dark:bg-emerald-900/80 min-w-[95px] border-r border-emerald-300 dark:border-emerald-800 cursor-pointer select-none hover:bg-emerald-300 transition"
             >
@@ -215,13 +208,6 @@ export const NdSalaryTable: React.FC<NdSalaryTableProps> = ({
                       ""
                     )}
                   </td>
-                  <td className="p-3 sm:p-3.5 text-center border-r border-slate-200 dark:border-slate-700">
-                    {row.goGt > 0 ? (
-                      <span className="text-teal-700 dark:text-teal-400 font-extrabold">{row.goGt}</span>
-                    ) : (
-                      ""
-                    )}
-                  </td>
                   <td className="p-3 sm:p-3.5 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-r border-slate-200 dark:border-slate-700">
                     {row.total > 0 ? row.total.toLocaleString("vi-VN") : ""}
                   </td>
@@ -257,9 +243,6 @@ export const NdSalaryTable: React.FC<NdSalaryTableProps> = ({
               </td>
               <td className="p-3 sm:p-3.5 text-center border-r border-slate-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-400">
                 {columnTotals.copyGt > 0 ? columnTotals.copyGt.toLocaleString("vi-VN") : "-"}
-              </td>
-              <td className="p-3 sm:p-3.5 text-center border-r border-slate-200 dark:border-slate-700 text-teal-700 dark:text-teal-400">
-                {columnTotals.goGt > 0 ? columnTotals.goGt.toLocaleString("vi-VN") : "-"}
               </td>
               <td className="p-3 sm:p-3.5 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/70 text-sm border-r border-slate-200 dark:border-slate-700">
                 {columnTotals.grandTotal.toLocaleString("vi-VN")}

@@ -15,8 +15,7 @@ export type NdWorkCategory =
   | "goGt";
 
 // Phân loại công việc ND chỉ theo cột K (Note) và L (Leader Check).
-// Tên đề không phải là tiêu chí tính lương. "AI khẩn" là MCQ gõ, không phải
-// AI Create.
+// Tên đề không phải là tiêu chí tính lương. "AI khẩn" và "Đề khẩn" là MCQ gõ.
 export const classifyNdWork = (input: {
   note?: unknown;
   leaderCheck?: unknown;
@@ -34,25 +33,52 @@ export const classifyNdWork = (input: {
   const signals = taggedSignals;
   const has = (value: string) => signals.includes(value);
 
+  // 1. CopyGT (Copy giải thích): Chỉ nhận 'copy gt', 'copygt', 'coppy gt', 'copy giai thich', 'coppy giai thich'
+  // hoặc vừa có copy/coppy/cp VÀ có giai thich / gt. Không xét hóa học, không xét gpt create.
+  const isCopy = has("copy") || has("coppy") || /(^|\s)cp($|\s)/.test(signals);
   const isExplanation = has("giai thich") || /(^|\s)gt($|\s)/.test(signals);
-  const isCopy = has("copy");
-  const isManualTyping = has("go tay");
-  const isAiUrgent = /ai\s*khan/.test(signals);
-  const isUrgent = /toi\s*khan/.test(signals);
-  const isPractice = has("thuc hanh");
-  const isAi = has("tao ai") || has("ai create") || /(^|\s)ai($|\s)/.test(signals);
-  const isGptCreate = has("gpt create");
-  const isAiChemistry = isAi && (has("hoa hoc") || has("hoa-hoc"));
+  const isCopyGt =
+    has("copy gt") ||
+    has("copygt") ||
+    has("coppy gt") ||
+    has("coppygt") ||
+    has("copy giai thich") ||
+    has("coppy giai thich") ||
+    (isCopy && isExplanation);
 
-  // Theo bảng quy tắc: CopyGT/GõGT có độ ưu tiên cao hơn nhãn Copy thường.
-  if (isGptCreate || isAiChemistry || (isExplanation && isCopy)) return "copyGt";
-  if (isExplanation) return "goGt";
-  if (isManualTyping || isAiUrgent) return "mcqGo";
+  // 3. Đề tối khẩn: 'de toi khan', 'toi khan'
+  const isUrgent = /(?:de\s*)?toi\s*khan/.test(signals);
+
+  // MCQ gõ / AI khẩn / Đề khẩn / Gõ tay
+  const isKhẩn = /(?:de\s*)?khan/.test(signals) && !isUrgent;
+  const isManualTyping =
+    has("go tay") ||
+    has("mcq go") ||
+    isKhẩn ||
+    /ai\s*khan/.test(signals);
+
+  // 4. Thực hành (TH): 'de thuc hanh', 'thuc hanh', 'th'
+  const isPractice =
+    /(?:de\s*)?thuc\s*hanh/.test(signals) || /(^|\s)th($|\s)/.test(signals);
+
+  // AI create
+  const isAi =
+    has("tao ai") ||
+    has("ai create") ||
+    has("gpt create") ||
+    /(^|\s)ai($|\s)/.test(signals);
+
+  // Thứ tự ưu tiên phân loại:
+  if (isCopyGt) return "copyGt";
+  // 2. Bỏ Gõ GT không cần (không trả về goGt)
   if (isUrgent) return "deToiKhan";
+  if (isManualTyping) return "mcqGo";
   if (isPractice) return "th";
-  if (isCopy) return "mcqCopy";
   if (isAi) return "aiCreate";
-  return "mcqGo";
+  if (isCopy) return "mcqCopy";
+
+  // 5. Nếu không note gì (hoặc không khớp keyword nào) -> Đưa vào MCQ Copy
+  return "mcqCopy";
 };
 
 // Khóa dùng để gộp đúng cùng một đề giữa Sheet ND và Sheet QC. Ưu tiên link

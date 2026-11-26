@@ -262,7 +262,7 @@ export const KpiTable: React.FC = () => {
               </span>
             </h3>
             <p className="text-[11px] sm:text-xs text-slate-500 font-bold">
-              Phân loại 7 định dạng đề bài & Tự động nhân đơn giá lương
+              Phân loại 6 định dạng đề bài & Tự động nhân đơn giá lương
             </p>
           </div>
         </div>
@@ -333,7 +333,7 @@ export const KpiTable: React.FC = () => {
       <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-1">
         <span className="flex items-center gap-1">
           <MoveHorizontal className="w-3.5 h-3.5" />
-          <span>Vuốt ngang để xem toàn bộ 7 cột phân loại đề</span>
+          <span>Vuốt ngang để xem toàn bộ 6 cột phân loại đề</span>
         </span>
         <span>Công thức: Tổng tiền = ∑(Số câu × Đơn giá từng loại)</span>
       </div>

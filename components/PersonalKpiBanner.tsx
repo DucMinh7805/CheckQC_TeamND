@@ -203,8 +203,8 @@ export const PersonalKpiBanner: React.FC = () => {
             </div>
           </div>
 
-          {/* Chi tiết 7 loại đề */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-2.5">
+          {/* Chi tiết 6 loại đề */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-2.5">
             <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-xl border border-slate-200/80 dark:border-slate-700 text-center">
               <span className="block text-[10px] font-bold text-slate-500">MCQ Copy</span>
               <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
@@ -244,13 +244,6 @@ export const PersonalKpiBanner: React.FC = () => {
               <span className="block text-[10px] font-bold text-slate-500">CopyGT</span>
               <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
                 {ndStats.copyGt > 0 ? ndStats.copyGt.toLocaleString("vi-VN") : "-"}
-              </span>
-            </div>
-
-            <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-xl border border-slate-200/80 dark:border-slate-700 text-center col-span-2 sm:col-span-1">
-              <span className="block text-[10px] font-bold text-slate-500">Gõ GT</span>
-              <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
-                {ndStats.goGt > 0 ? ndStats.goGt.toLocaleString("vi-VN") : "-"}
               </span>
             </div>
           </div>
