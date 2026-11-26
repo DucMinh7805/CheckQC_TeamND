@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
         const taskTitle = body.task_title || "Đề bài";
         const deleteTime = body.deleted_at || new Date().toLocaleString("vi-VN");
 
-        title = `🚨 [CẢNH BÁO XÓA ĐỀ] ${deletedByName} vừa xóa đề`;
+        title = `Đề QC đã được xóa bởi ${deletedByName}`;
         message = `Lúc ${deleteTime}: Tài khoản ${deletedByName} (${body.deleted_by_role || "QC"}) đã xóa đề "${taskTitle}".`;
         targetNames = ["Admin", "Minh"];
       } else {

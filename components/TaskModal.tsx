@@ -356,10 +356,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
     if (res.success) {
       soundService.playNotificationSound("success");
-      setActionSuccess("Đã xóa đề bài thành công!");
-      setTimeout(() => {
-        onClose();
-      }, 700);
+      onClose();
     } else {
       setActionError(res.message || "Lỗi xóa đề bài!");
     }

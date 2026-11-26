@@ -692,11 +692,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 deleted_at: payloadOrRowIndex.deleted_at || nowStr,
               };
 
+        // Tối ưu tốc độ: Xóa tức thì khỏi local state (Optimistic UI) để giao diện biến mất ngay lập tức
+        setAppData((prev) => prev.filter((t) => t.row_index !== rowIndex));
+
         const result = await postAppData(payload);
         if (result && result.status === "success") {
-          // Xóa tức thì khỏi local state để giao diện phản hồi ngay lập tức
-          setAppData((prev) => prev.filter((t) => t.row_index !== rowIndex));
-          await loadData();
+          // Đồng bộ lại ngầm ở chế độ nền (không chặn giao diện, tốc độ phản hồi cực nhanh)
+          loadData().catch(console.error);
           return { success: true };
         }
         return { success: false, message: result?.message || "Lỗi xóa đề bài trên máy chủ!" };
