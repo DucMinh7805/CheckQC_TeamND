@@ -106,6 +106,7 @@ interface AppContextType {
   saveTaskDetails: (payload: SaveTaskPayload) => Promise<{ success: boolean; message?: string }>;
   updateTaskStatus: (payload: UpdateStatusPayload) => Promise<{ success: boolean; message?: string }>;
   updateTaskQcDone: (rowIndex: number, isDone: boolean) => Promise<{ success: boolean; message?: string }>;
+  deleteTask: (rowIndex: number) => Promise<{ success: boolean; message?: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -665,6 +666,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [loadData]
   );
 
+  // Xóa đề bài (Chỉ Admin hoặc QC phụ trách tạo đề có quyền)
+  const deleteTask = useCallback(
+    async (rowIndex: number) => {
+      try {
+        const payload = {
+          action: "delete",
+          row_index: rowIndex,
+        };
+        const result = await postAppData(payload);
+        if (result && result.status === "success") {
+          // Xóa tức thì khỏi local state để giao diện phản hồi ngay lập tức
+          setAppData((prev) => prev.filter((t) => t.row_index !== rowIndex));
+          await loadData();
+          return { success: true };
+        }
+        return { success: false, message: result?.message || "Lỗi xóa đề bài trên máy chủ!" };
+      } catch (e: any) {
+        return { success: false, message: e.message || "Lỗi kết nối máy chủ!" };
+      }
+    },
+    [loadData]
+  );
+
   const availableAssignmentMonths = useMemo(() => {
     if (!monthlyAssignments) return [];
     return Object.keys(monthlyAssignments);
@@ -819,6 +843,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         saveTaskDetails,
         updateTaskStatus,
         updateTaskQcDone,
+        deleteTask,
       }}
     >
       {children}

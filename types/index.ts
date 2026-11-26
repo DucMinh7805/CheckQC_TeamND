@@ -65,6 +65,7 @@ export interface CreateTaskPayload {
 
 export interface SaveTaskPayload {
   row_index: number;
+  id_thang?: string;
   task_title?: string;
   so_cau?: number | string;
   worker_name?: string;
