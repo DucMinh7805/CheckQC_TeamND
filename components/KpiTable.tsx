@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { NdSalaryRatesCard, NdRates } from "./salary/NdSalaryRatesCard";
 import { NdSalaryTable, NdSortField, NdKpiRowData } from "./salary/NdSalaryTable";
 
@@ -269,32 +270,28 @@ export const KpiTable: React.FC = () => {
 
         <div className="flex items-center gap-2 flex-wrap">
           {availableMonths.length > 0 && (
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setSelectedKpiMonth("ALL")}
-                className={`px-3 py-1 text-xs font-black rounded-lg transition ${
-                  selectedKpiMonth === "ALL"
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
-                }`}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 ml-2.5 flex-shrink-0" />
+              <Select
+                value={selectedKpiMonth}
+                onValueChange={(val) => val && setSelectedKpiMonth(val)}
               >
-                Tất cả
-              </button>
-              {availableMonths.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setSelectedKpiMonth(m)}
-                  className={`px-3 py-1 text-xs font-black rounded-lg transition ${
-                    selectedKpiMonth === m
-                      ? "bg-emerald-600 text-white shadow-xs"
-                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
+                <SelectTrigger className="border-none bg-transparent shadow-none font-black text-xs sm:text-sm h-8 min-w-[145px] focus:ring-0">
+                  <span className="truncate">
+                    {selectedKpiMonth === "ALL" ? "Tất cả các tháng" : selectedKpiMonth}
+                  </span>
+                </SelectTrigger>
+                <SelectContent className="max-h-60 rounded-2xl border-slate-200 dark:border-slate-800 shadow-xl overflow-y-auto">
+                  <SelectItem value="ALL" className="font-black text-xs sm:text-sm text-emerald-700 dark:text-emerald-400">
+                    Tất cả các tháng
+                  </SelectItem>
+                  {availableMonths.map((m) => (
+                    <SelectItem key={m} value={m} className="font-extrabold text-xs sm:text-sm">
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -303,7 +300,7 @@ export const KpiTable: React.FC = () => {
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing || isLoading}
-            className="rounded-xl border-slate-200 dark:border-slate-700 h-8 px-2.5 text-xs font-bold"
+            className="rounded-2xl border-slate-200 dark:border-slate-700 h-8 px-3 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <RefreshCw className={`w-3.5 h-3.5 mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
             <span>Làm mới</span>
