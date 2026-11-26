@@ -219,4 +219,18 @@ export interface QcSalaryStatItem {
   tasksList: MonthlyAssignmentItem[];
 }
 
+export interface DeleteTaskPayload {
+  row_index: number;
+  task_title?: string;
+  id_thang?: string;
+  so_cau?: string | number;
+  worker_name?: string;
+  qc_name?: string;
+  deleted_by_name?: string;
+  deleted_by_role?: string;
+  deleted_by_email?: string;
+  deleted_at?: string;
+}
+
+
 

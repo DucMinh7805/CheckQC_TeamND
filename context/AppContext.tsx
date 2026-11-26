@@ -34,6 +34,7 @@ import {
   DashboardStats,
   QcPersonalStats,
   TeamQuestionTotals,
+  DeleteTaskPayload,
 } from "@/types";
 import {
   cleanStr,
@@ -106,7 +107,7 @@ interface AppContextType {
   saveTaskDetails: (payload: SaveTaskPayload) => Promise<{ success: boolean; message?: string }>;
   updateTaskStatus: (payload: UpdateStatusPayload) => Promise<{ success: boolean; message?: string }>;
   updateTaskQcDone: (rowIndex: number, isDone: boolean) => Promise<{ success: boolean; message?: string }>;
-  deleteTask: (rowIndex: number) => Promise<{ success: boolean; message?: string }>;
+  deleteTask: (payloadOrRowIndex: number | DeleteTaskPayload) => Promise<{ success: boolean; message?: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -666,14 +667,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [loadData]
   );
 
-  // Xóa đề bài (Chỉ Admin hoặc QC phụ trách tạo đề có quyền)
+  // Xóa đề bài (Chỉ Admin hoặc QC phụ trách tạo đề có quyền, trigger ngầm gửi log & cảnh báo)
   const deleteTask = useCallback(
-    async (rowIndex: number) => {
+    async (payloadOrRowIndex: number | DeleteTaskPayload) => {
       try {
-        const payload = {
-          action: "delete",
-          row_index: rowIndex,
-        };
+        const rowIndex = typeof payloadOrRowIndex === "number" ? payloadOrRowIndex : payloadOrRowIndex.row_index;
+        const nowStr = new Date().toLocaleString("vi-VN");
+        const payload =
+          typeof payloadOrRowIndex === "number"
+            ? {
+                action: "delete",
+                row_index: rowIndex,
+                deleted_by_name: currentUser?.name || "QC",
+                deleted_by_role: effectiveRole || "QC",
+                deleted_by_email: currentUser?.email || "",
+                deleted_at: nowStr,
+              }
+            : {
+                action: "delete",
+                ...payloadOrRowIndex,
+                deleted_by_name: payloadOrRowIndex.deleted_by_name || currentUser?.name || "QC",
+                deleted_by_role: payloadOrRowIndex.deleted_by_role || effectiveRole || "QC",
+                deleted_by_email: payloadOrRowIndex.deleted_by_email || currentUser?.email || "",
+                deleted_at: payloadOrRowIndex.deleted_at || nowStr,
+              };
+
         const result = await postAppData(payload);
         if (result && result.status === "success") {
           // Xóa tức thì khỏi local state để giao diện phản hồi ngay lập tức
@@ -686,7 +704,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return { success: false, message: e.message || "Lỗi kết nối máy chủ!" };
       }
     },
-    [loadData]
+    [currentUser, effectiveRole, loadData]
   );
 
   const availableAssignmentMonths = useMemo(() => {

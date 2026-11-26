@@ -339,7 +339,19 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     setActionError(null);
     setActionSuccess(null);
 
-    const res = await deleteTask(task.row_index);
+    const deleteTime = new Date().toLocaleString("vi-VN");
+    const res = await deleteTask({
+      row_index: task.row_index,
+      task_title: title,
+      id_thang: idThang,
+      so_cau: soCau,
+      worker_name: workerName,
+      qc_name: qcName,
+      deleted_by_name: currentUser?.name || "QC",
+      deleted_by_role: effectiveRole || "QC",
+      deleted_by_email: currentUser?.email || "",
+      deleted_at: deleteTime,
+    });
     setIsDeleting(false);
 
     if (res.success) {

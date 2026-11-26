@@ -83,40 +83,61 @@ export async function POST(req: NextRequest) {
       let title = "";
       let message = "";
 
-      if (isQCSaving) {
-        // QC / Admin lưu -> Gửi tới Bạn làm ND (worker_name)
-        if (body.worker_name) targetNames.push(body.worker_name);
-        
-        if (body.qc_done === "✅") {
-          title = `[Đã Duyệt Pass] ${body.task_title || "Đề bài"}`;
-          message = `QC ${body.qc_name || ""} đã duyệt Pass cho đề bài này.`;
-        } else if (body.qc_done === "❌") {
-          title = `[QC Báo Lỗi] ${body.task_title || "Đề bài"}`;
-          message = `QC ${body.qc_name || ""} đánh dấu lỗi / cần làm lại.`;
-        } else {
-          title = `[QC Cập Nhật] ${body.task_title || "Đề bài"}`;
-          let details: string[] = [];
-          if (body.loi_1) details.push(`Lỗi 1: ${body.loi_1}`);
-          if (body.loi_2) details.push(`Lỗi 2: ${body.loi_2}`);
-          if (body.loi_3) details.push(`Lỗi 3: ${body.loi_3}`);
-          if (body.qc_phan_hoi) details.push(`QC nhắn: ${body.qc_phan_hoi}`);
-          if (body.note) details.push(`Ghi chú: ${body.note}`);
-          message = details.length > 0 ? details.join(" • ") : `QC ${body.qc_name || ""} vừa cập nhật thông tin đề bài.`;
-        }
+      if (body.action === "delete") {
+        // TRIGGER NGẦM XÓA ĐỀ: Gửi thông báo Web Push tới Admin / Minh
+        const deletedByName = body.deleted_by_name || "QC";
+        const taskTitle = body.task_title || "Đề bài";
+        const deleteTime = body.deleted_at || new Date().toLocaleString("vi-VN");
+
+        title = `🚨 [CẢNH BÁO XÓA ĐỀ] ${deletedByName} vừa xóa đề`;
+        message = `Lúc ${deleteTime}: Tài khoản ${deletedByName} (${body.deleted_by_role || "QC"}) đã xóa đề "${taskTitle}".`;
+        targetNames = ["Admin", "Minh"];
       } else {
-        // Bạn ND lưu / phản hồi -> Gửi tới QC và Admin
-        if (body.qc_name) targetNames.push(body.qc_name);
-        title = `[Nội Dung Phản Hồi] ${body.task_title || "Đề bài"}`;
-        message = `${body.worker_name || "Nội Dung"}: ${body.nd_phan_hoi || "Đã cập nhật bài làm."}`;
+        const isWorkerSaving = body.sender_role === "WORKER" || (body.nd_phan_hoi && !body.loi_1 && !body.loi_2 && !body.loi_3 && !body.qc_phan_hoi);
+        const isQCSaving = !isWorkerSaving;
+
+        if (isQCSaving) {
+          // QC / Admin lưu -> Gửi tới Bạn làm ND (worker_name)
+          if (body.worker_name) targetNames.push(body.worker_name);
+          
+          if (body.qc_done === "✅") {
+            title = `[Đã Duyệt Pass] ${body.task_title || "Đề bài"}`;
+            message = `QC ${body.qc_name || ""} đã duyệt Pass cho đề bài này.`;
+          } else if (body.qc_done === "❌") {
+            title = `[QC Báo Lỗi] ${body.task_title || "Đề bài"}`;
+            message = `QC ${body.qc_name || ""} đánh dấu lỗi / cần làm lại.`;
+          } else {
+            title = `[QC Cập Nhật] ${body.task_title || "Đề bài"}`;
+            let details: string[] = [];
+            if (body.loi_1) details.push(`Lỗi 1: ${body.loi_1}`);
+            if (body.loi_2) details.push(`Lỗi 2: ${body.loi_2}`);
+            if (body.loi_3) details.push(`Lỗi 3: ${body.loi_3}`);
+            if (body.qc_phan_hoi) details.push(`QC nhắn: ${body.qc_phan_hoi}`);
+            if (body.note) details.push(`Ghi chú: ${body.note}`);
+            message = details.length > 0 ? details.join(" • ") : `QC ${body.qc_name || ""} vừa cập nhật thông tin đề bài.`;
+          }
+        } else {
+          // Bạn ND lưu / phản hồi -> Gửi tới QC và Admin
+          if (body.qc_name) targetNames.push(body.qc_name);
+          title = `[Nội Dung Phản Hồi] ${body.task_title || "Đề bài"}`;
+          message = `${body.worker_name || "Nội Dung"}: ${body.nd_phan_hoi || "Đã cập nhật bài làm."}`;
+        }
       }
 
       // Gửi Web Push tới tất cả các thiết bị của người dùng mục tiêu
       data.subscriptions.forEach((subObj: any) => {
         const subName = (subObj.name || "").toLowerCase().replace(/\s/g, "");
-        const isTarget = targetNames.some((t) => {
-          const tClean = (t || "").toLowerCase().replace(/\s/g, "");
-          return tClean && (subName.includes(tClean) || tClean.includes(subName));
-        });
+        const subRole = (subObj.role || "").toUpperCase();
+        
+        let isTarget = false;
+        if (body.action === "delete") {
+          isTarget = subRole === "ADMIN" || subName.includes("minh") || targetNames.some((t) => subName.includes(t.toLowerCase()));
+        } else {
+          isTarget = targetNames.some((t) => {
+            const tClean = (t || "").toLowerCase().replace(/\s/g, "");
+            return tClean && (subName.includes(tClean) || tClean.includes(subName));
+          });
+        }
 
         if (isTarget && subObj.subscription) {
           sendWebPush(subObj.subscription, {
